@@ -1,0 +1,11 @@
+{
+  "buildCommand": "curl -o flutter.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.19.0-stable.tar.xz && tar xf flutter.tar.xz && export PATH=\"$PWD/flutter/bin:$PATH\" && flutter doctor && flutter build web --release --pwa-strategy=none",
+  "outputDirectory": "build/web",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
