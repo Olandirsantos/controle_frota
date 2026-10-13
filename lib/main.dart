@@ -2178,14 +2178,15 @@ class _TelaCadastroManutencaoState extends State<TelaCadastroManutencao> {
   }
 }
 
-// ----------------------------------------------------
-// TELA DE CADASTRO DE VEÍCULOS
-// ----------------------------------------------------
+// ==========================================
+// TELA DE CADASTRO DE VEÍCULO
+// ==========================================
 class TelaCadastroVeiculo extends StatefulWidget {
   const TelaCadastroVeiculo({super.key});
 
   @override
   State<TelaCadastroVeiculo> createState() => _TelaCadastroVeiculoState();
+}
 
 class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
   final _formKey = GlobalKey<FormState>();
@@ -2203,26 +2204,32 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
   }
 
   Future<void> _salvarVeiculo() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _aSalvar = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        await supabase.from('veiculos').insert({
-          'modelo': _modeloController.text.trim(),
-          'placa': _placaController.text.trim().toUpperCase(),
-          'quilometragem': '${_kmController.text.trim()} km',
-        });
+    setState(() => _aSalvar = true);
 
-        if (mounted) {
-          Navigator.pop(context, true);
-        }
-      } catch (e) {
+    try {
+      await supabase.from('veiculos').insert({
+        'modelo': _modeloController.text.trim(),
+        'placa': _placaController.text.trim().toUpperCase(),
+        'km_atual': int.tryParse(_kmController.text.trim()) ?? 0,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Veículo cadastrado com sucesso!')),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar veículo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
         setState(() => _aSalvar = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao salvar no banco: $e')),
-          );
-        }
       }
     }
   }
@@ -2231,9 +2238,7 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cadastrar na Nuvem'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text('Cadastrar Veículo'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -2245,63 +2250,50 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
                 controller: _modeloController,
                 decoration: const InputDecoration(
                   labelText: 'Modelo do Veículo',
-                  hintText: 'Ex: Mercedes / Saveiro',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.directions_car),
+                  hintText: 'Ex: Volvo FH 540',
                 ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Por favor, informe o modelo'
-                    : null,
+                validator: (valor) {
+                  if (valor == null || valor.isEmpty) {
+                    return 'Por favor, informe o modelo';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _placaController,
                 decoration: const InputDecoration(
                   labelText: 'Placa',
-                  hintText: 'Ex: ABC-1234',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.badge),
+                  hintText: 'Ex: ABC1D23',
                 ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Por favor, informe a placa'
-                    : null,
+                validator: (valor) {
+                  if (valor == null || valor.isEmpty) {
+                    return 'Por favor, informe a placa';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _kmController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Quilometragem Inicial',
-                  hintText: 'Ex: 85000',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.speed),
+                  labelText: 'KM Atual',
+                  hintText: 'Ex: 150000',
                 ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Por favor, informe a quilometragem'
-                    : null,
+                validator: (valor) {
+                  if (valor == null || valor.isEmpty) {
+                    return 'Por favor, informe a quilometragem';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
-              ElevatedButton.icon(
+              ElevatedButton(
                 onPressed: _aSalvar ? null : _salvarVeiculo,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                icon: _aSalvar
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(Icons.cloud_upload),
-                label: Text(
-                  _aSalvar ? 'A guardar na nuvem...' : 'Salvar no Supabase',
-                  style: const TextStyle(fontSize: 16),
-                ),
+                child: _aSalvar
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Salvar Veículo'),
               ),
             ],
           ),
@@ -2309,3 +2301,4 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
       ),
     );
   }
+}
