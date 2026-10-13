@@ -1735,6 +1735,8 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
   late final TextEditingController _toneladasController;
   late final TextEditingController _valorTonController;
   late final TextEditingController _motoristaController;
+  late final TextEditingController _produtoController;
+  late final TextEditingController _transportadoraController;
   late final TextEditingController _dataController;
   bool _aSalvar = false;
 
@@ -1749,6 +1751,8 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
     _toneladasController = TextEditingController(text: v != null ? v['toneladas']?.toString() : '');
     _valorTonController = TextEditingController(text: v != null ? v['valor_tonelada']?.toString() : '');
     _motoristaController = TextEditingController(text: v != null ? v['motorista']?.toString() : '');
+    _produtoController = TextEditingController(text: v != null ? v['produto']?.toString() : '');
+    _transportadoraController = TextEditingController(text: v != null ? v['transportadora']?.toString() : '');
     _dataController = TextEditingController(
       text: v != null
           ? v['data']
@@ -1765,6 +1769,8 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
     _toneladasController.dispose();
     _valorTonController.dispose();
     _motoristaController.dispose();
+    _produtoController.dispose();
+    _transportadoraController.dispose();
     _dataController.dispose();
     super.dispose();
   }
@@ -1789,6 +1795,8 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
           'valor_tonelada': valorTon > 0 ? valorTon : null,
           'frete_total': freteTotal > 0 ? freteTotal : null,
           'motorista': _motoristaController.text.trim(),
+          'produto': _produtoController.text.trim(),
+          'transportadora': _transportadoraController.text.trim(),
           'data': _dataController.text.trim(),
         };
 
@@ -1922,6 +1930,28 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              // CAMPO PRODUTO
+              TextFormField(
+                controller: _produtoController,
+                decoration: const InputDecoration(
+                  labelText: 'Produto / Grão',
+                  hintText: 'Ex: Soja, Milho, Adubo',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.inventory_2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // CAMPO TRANSPORTADORA
+              TextFormField(
+                controller: _transportadoraController,
+                decoration: const InputDecoration(
+                  labelText: 'Transportadora',
+                  hintText: 'Ex: Nome da Transportadora',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.local_shipping),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
