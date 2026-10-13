@@ -1729,7 +1729,7 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
 }
 
 // ----------------------------------------------------
-// TELA DE CADASTRO OU EDIÇÃO DE VIAGEM
+// TELA DE CADASTRO OU EDIÇÃO DE VIAGEM (ATUALIZADA)
 // ----------------------------------------------------
 class TelaCadastroViagem extends StatefulWidget {
   final dynamic veiculoId;
@@ -1757,6 +1757,13 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
   late final TextEditingController _produtoController;
   late final TextEditingController _transportadoraController;
   late final TextEditingController _dataController;
+  
+  // NOVOS CONTROLADORES FINANCEIROS
+  late final TextEditingController _adiantamentoController;
+  late final TextEditingController _dataAdiantamentoController;
+  late final TextEditingController _saldoRecebidoController;
+  late final TextEditingController _dataSaldoController;
+  
   bool _aSalvar = false;
 
   @override
@@ -1772,6 +1779,13 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
     _motoristaController = TextEditingController(text: v != null ? v['motorista']?.toString() : '');
     _produtoController = TextEditingController(text: v != null ? v['produto']?.toString() : '');
     _transportadoraController = TextEditingController(text: v != null ? v['transportadora']?.toString() : '');
+    
+    // INICIALIZAÇÃO DOS NOVOS CAMPOS
+    _adiantamentoController = TextEditingController(text: v != null ? v['adiantamento']?.toString() : '');
+    _dataAdiantamentoController = TextEditingController(text: v != null ? v['data_adiantamento']?.toString() : '');
+    _saldoRecebidoController = TextEditingController(text: v != null ? v['saldo_recebido']?.toString() : '');
+    _dataSaldoController = TextEditingController(text: v != null ? v['data_saldo']?.toString() : '');
+
     _dataController = TextEditingController(
       text: v != null
           ? v['data']
@@ -1790,6 +1804,10 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
     _motoristaController.dispose();
     _produtoController.dispose();
     _transportadoraController.dispose();
+    _adiantamentoController.dispose();
+    _dataAdiantamentoController.dispose();
+    _saldoRecebidoController.dispose();
+    _dataSaldoController.dispose();
     _dataController.dispose();
     super.dispose();
   }
@@ -1803,6 +1821,9 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
         final toneladas = double.tryParse(_toneladasController.text.trim().replaceAll(',', '.')) ?? 0.0;
         final valorTon = double.tryParse(_valorTonController.text.trim().replaceAll(',', '.')) ?? 0.0;
         final freteTotal = toneladas * valorTon;
+        
+        final adiantamentoVal = double.tryParse(_adiantamentoController.text.trim().replaceAll(',', '.')) ?? 0.0;
+        final saldoRecebidoVal = double.tryParse(_saldoRecebidoController.text.trim().replaceAll(',', '.')) ?? 0.0;
 
         final dados = {
           'veiculo_id': widget.veiculoId,
@@ -1816,6 +1837,10 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
           'motorista': _motoristaController.text.trim(),
           'produto': _produtoController.text.trim(),
           'transportadora': _transportadoraController.text.trim(),
+          'adiantamento': adiantamentoVal,
+          'data_adiantamento': _dataAdiantamentoController.text.trim(),
+          'saldo_recebido': saldoRecebidoVal,
+          'data_saldo': _dataSaldoController.text.trim(),
           'data': _dataController.text.trim(),
         };
 
@@ -1825,9 +1850,6 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
           final id = widget.viagemExistente!['id'];
           await supabase.from('viagens').update(dados).eq('id', id);
         }
-
-        // Atualiza a KM do veículo automaticamente no banco se a nova KM final for maior
-        await _atualizarKmVeiculoSeMaior(widget.veiculoId, kmFinalStr);
 
         if (mounted) {
           Navigator.pop(context, true);
@@ -1867,9 +1889,7 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.trip_origin),
                 ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Por favor, informe a origem'
-                    : null,
+                validator: (value) => value == null || value.trim().isEmpty ? 'Informe a origem' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -1880,9 +1900,7 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.place),
                 ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Por favor, informe o destino'
-                    : null,
+                validator: (value) => value == null || value.trim().isEmpty ? 'Informe o destino' : null,
               ),
               const SizedBox(height: 16),
               Row(
@@ -1893,13 +1911,10 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'KM Inicial',
-                        hintText: 'Ex: 110000',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.speed),
                       ),
-                      validator: (value) => value == null || value.trim().isEmpty
-                          ? 'Informe o KM inicial'
-                          : null,
+                      validator: (value) => value == null || value.trim().isEmpty ? 'Informe o KM inicial' : null,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -1909,13 +1924,10 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'KM Final',
-                        hintText: 'Ex: 110550',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.speed),
                       ),
-                      validator: (value) => value == null || value.trim().isEmpty
-                          ? 'Informe o KM final'
-                          : null,
+                      validator: (value) => value == null || value.trim().isEmpty ? 'Informe o KM final' : null,
                     ),
                   ),
                 ],
@@ -1929,7 +1941,6 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(
                         labelText: 'Peso (Ton)',
-                        hintText: 'Ex: 37.5',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.scale),
                       ),
@@ -1942,7 +1953,6 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(
                         labelText: 'Valor por Tonelada (R\$)',
-                        hintText: 'Ex: 120.00',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.attach_money),
                       ),
@@ -1951,33 +1961,86 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                 ],
               ),
               const SizedBox(height: 16),
-              // CAMPO PRODUTO
               TextFormField(
                 controller: _produtoController,
                 decoration: const InputDecoration(
                   labelText: 'Produto / Grão',
-                  hintText: 'Ex: Soja, Milho, Adubo',
+                  hintText: 'Ex: Soja, Milho',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.inventory_2),
                 ),
               ),
               const SizedBox(height: 16),
-              // CAMPO TRANSPORTADORA
               TextFormField(
                 controller: _transportadoraController,
                 decoration: const InputDecoration(
                   labelText: 'Transportadora',
-                  hintText: 'Ex: Nome da Transportadora',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.local_shipping),
                 ),
               ),
+              
+              // SEÇÃO DE CONTROLOS FINANCEIROS (Adiantamento e Saldo)
+              const SizedBox(height: 24),
+              const Text('Controlo Financeiro', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.indigo)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _adiantamentoController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Adiantamento (R\$)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _dataAdiantamentoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Data Adiantamento',
+                        hintText: 'DD/MM/AAAA',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _saldoRecebidoController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Saldo Recebido (R\$)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _dataSaldoController,
+                      decoration: const InputDecoration(
+                        labelText: 'Data Saldo',
+                        hintText: 'DD/MM/AAAA',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 16),
               TextFormField(
                 controller: _motoristaController,
                 decoration: const InputDecoration(
                   labelText: 'Nome do Motorista (Opcional)',
-                  hintText: 'Ex: Carlos Silva',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
@@ -1986,14 +2049,11 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
               TextFormField(
                 controller: _dataController,
                 decoration: const InputDecoration(
-                  labelText: 'Data',
-                  hintText: 'DD/MM/AAAA',
+                  labelText: 'Data da Viagem',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.calendar_today),
                 ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Por favor, informe a data'
-                    : null,
+                validator: (value) => value == null || value.trim().isEmpty ? 'Informe a data' : null,
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -2007,10 +2067,7 @@ class _TelaCadastroViagemState extends State<TelaCadastroViagem> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                     : const Icon(Icons.cloud_upload),
                 label: Text(
@@ -2353,142 +2410,25 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
 }
 
 // ====================================================
-// TELA DE DETALHES DA VIAGEM COM ABAS E ADIANTAMENTOS REAIS
+// TELA DE DETALHES DA VIAGEM COM ABAS FINANCEIRAS
 // ====================================================
-class DetalhesViagemAbasScreen extends StatefulWidget {
+class DetalhesViagemAbasScreen extends StatelessWidget {
   final Map<String, dynamic> viagem;
 
   const DetalhesViagemAbasScreen({super.key, required this.viagem});
 
   @override
-  State<DetalhesViagemAbasScreen> createState() => _DetalhesViagemAbasScreenState();
-}
-
-class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
-  List<Map<String, dynamic>> _adiantamentos = [];
-  bool _carregandoAdiantamentos = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _carregarAdiantamentos();
-  }
-
-  Future<void> _carregarAdiantamentos() async {
-    try {
-      final viagemId = widget.viagem['id'];
-      final resposta = await supabase
-          .from('adiantamentos')
-          .select()
-          .eq('viagem_id', viagemId)
-          .order('id', ascending: false);
-
-      setState(() {
-        _adiantamentos = List<Map<String, dynamic>>.from(resposta);
-        _carregandoAdiantamentos = false;
-      });
-    } catch (e) {
-      setState(() => _carregandoAdiantamentos = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar adiantamentos: $e')),
-        );
-      }
-    }
-  }
-
-  void _mostrarDialogoAdicionarAdiantamento() {
-    final _descricaoController = TextEditingController();
-    final _valorController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Novo Adiantamento / Vale'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _descricaoController,
-                decoration: const InputDecoration(labelText: 'Descrição (Ex: Diesel, Pedágio)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _valorController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Valor (R\$)'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-              onPressed: () async {
-                final descricao = _descricaoController.text.trim();
-                final valor = double.tryParse(_valorController.text.trim().replaceAll(',', '.')) ?? 0.0;
-
-                if (descricao.isNotEmpty && valor > 0) {
-                  Navigator.pop(context);
-                  try {
-                    await supabase.from('adiantamentos').insert({
-                      'viagem_id': widget.viagem['id'],
-                      'descricao': descricao,
-                      'valor': valor,
-                      'data': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
-                    });
-                    _carregarAdiantamentos();
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao salvar adiantamento: $e')),
-                      );
-                    }
-                  }
-                }
-              },
-              child: const Text('Salvar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _apagarAdiantamento(dynamic id) async {
-    try {
-      await supabase.from('adiantamentos').delete().eq('id', id);
-      _carregarAdiantamentos();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao apagar adiantamento: $e')),
-        );
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final double freteTotal = double.tryParse(widget.viagem['frete_total']?.toString() ?? '0') ?? 0.0;
-    
-    // Soma automática de todos os adiantamentos registados para esta viagem
-    double totalAdiantamentos = 0.0;
-    for (var a in _adiantamentos) {
-      totalAdiantamentos += double.tryParse(a['valor']?.toString() ?? '0') ?? 0.0;
-    }
-
-    final double saldoReceber = freteTotal - totalAdiantamentos;
+    final double freteTotal = double.tryParse(viagem['frete_total']?.toString() ?? '0') ?? 0.0;
+    // Exemplo de adiantamentos simulados (pode ligar posteriormente a uma tabela no Supabase)
+    const double adiantamentos = 1200.0; 
+    final double saldoReceber = freteTotal - adiantamentos;
 
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('${widget.viagem['origem'] ?? 'Origem'} ➔ ${widget.viagem['destino'] ?? 'Destino'}'),
+          title: Text('${viagem['origem'] ?? 'Origem'} ➔ ${viagem['destino'] ?? 'Destino'}'),
           backgroundColor: Colors.indigo,
           foregroundColor: Colors.white,
           bottom: const TabBar(
@@ -2505,7 +2445,7 @@ class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
         body: TabBarView(
           children: [
             // ==========================================
-            // ABA 1: RESUMO DA VIAGEM
+            // ABA 1: RESUMO DO FRETE E DADOS DA VIAGEM
             // ==========================================
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -2528,25 +2468,25 @@ class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
                             dense: true,
                             leading: const Icon(Icons.inventory_2, color: Colors.green),
                             title: const Text('Produto / Grão'),
-                            subtitle: Text(widget.viagem['produto'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(viagem['produto'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                           ListTile(
                             dense: true,
                             leading: const Icon(Icons.local_shipping, color: Colors.blue),
                             title: const Text('Transportadora'),
-                            subtitle: Text(widget.viagem['transportadora'] ?? 'Não informada', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(viagem['transportadora'] ?? 'Não informada', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                           ListTile(
                             dense: true,
                             leading: const Icon(Icons.person, color: Colors.orange),
                             title: const Text('Motorista'),
-                            subtitle: Text(widget.viagem['motorista'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(viagem['motorista'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                           ListTile(
                             dense: true,
                             leading: const Icon(Icons.calendar_today, color: Colors.purple),
                             title: const Text('Data da Viagem'),
-                            subtitle: Text(widget.viagem['data'] ?? 'N/D', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(viagem['data'] ?? 'N/D', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ),
@@ -2567,8 +2507,8 @@ class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
                           ),
                           const Divider(height: 24),
                           ListTile(
-                            title: Text('Peso (Ton): ${widget.viagem['toneladas'] ?? '0'}'),
-                            subtitle: Text('Valor por Tonelada: R\$ ${widget.viagem['valor_tonelada'] ?? '0,00'}'),
+                            title: Text('Peso (Ton): ${viagem['toneladas'] ?? '0'}'),
+                            subtitle: Text('Valor por Tonelada: R\$ ${viagem['valor_tonelada'] ?? '0,00'}'),
                           ),
                           ListTile(
                             title: Text(
@@ -2585,7 +2525,7 @@ class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
             ),
 
             // ==========================================
-            // ABA 2: ADIANTAMENTOS / VALES (COM REGISTO REAL)
+            // ABA 2: ADIANTAMENTOS / VALES
             // ==========================================
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -2597,50 +2537,29 @@ class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(48),
                     ),
-                    onPressed: _mostrarDialogoAdicionarAdiantamento,
+                    onPressed: () {
+                      // Ação para abrir modal de adicionar adiantamento
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Funcionalidade de Adicionar Adiantamento')),
+                      );
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Registar Novo Adiantamento / Vale'),
                   ),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: _carregandoAdiantamentos
-                        ? const Center(child: CircularProgressIndicator())
-                        : _adiantamentos.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Nenhum adiantamento registado para esta viagem.',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: _adiantamentos.length,
-                                itemBuilder: (context, index) {
-                                  final adiantamento = _adiantamentos[index];
-                                  final double valorAdiantamento = double.tryParse(adiantamento['valor']?.toString() ?? '0') ?? 0.0;
-                                  
-                                  return Card(
-                                    margin: const EdgeInsets.symmetric(vertical: 6),
-                                    child: ListTile(
-                                      leading: const Icon(Icons.money_off, color: Colors.amber),
-                                      title: Text(adiantamento['descricao'] ?? 'Adiantamento'),
-                                      subtitle: Text('Data: ${adiantamento['data'] ?? 'N/D'}'),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'R\$ ${valorAdiantamento.toStringAsFixed(2)}',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 15),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                            onPressed: () => _apagarAdiantamento(adiantamento['id']),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                    child: ListView(
+                      children: const [
+                        Card(
+                          child: ListTile(
+                            leading: Icon(Icons.local_gas_station, color: Colors.amber),
+                            title: Text('Adiantamento para Diesel'),
+                            subtitle: Text('10/10/2026 - Posto de Rodovia'),
+                            trailing: Text('R\$ 1.200,00', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -2676,8 +2595,8 @@ class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('(-) Total Adiantamentos:', style: TextStyle(fontSize: 16)),
-                            Text('R\$ ${totalAdiantamentos.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.red)),
+                            const Text('(-) Adiantamentos:', style: TextStyle(fontSize: 16)),
+                            Text('R\$ ${adiantamentos.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.red)),
                           ],
                         ),
                         const Divider(height: 32),
