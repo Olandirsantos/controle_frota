@@ -2310,4 +2310,3 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
       ),
     );
   }
-}
