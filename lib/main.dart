@@ -2353,25 +2353,142 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
 }
 
 // ====================================================
-// TELA DE DETALHES DA VIAGEM COM ABAS FINANCEIRAS
+// TELA DE DETALHES DA VIAGEM COM ABAS E ADIANTAMENTOS REAIS
 // ====================================================
-class DetalhesViagemAbasScreen extends StatelessWidget {
+class DetalhesViagemAbasScreen extends StatefulWidget {
   final Map<String, dynamic> viagem;
 
   const DetalhesViagemAbasScreen({super.key, required this.viagem});
 
   @override
+  State<DetalhesViagemAbasScreen> createState() => _DetalhesViagemAbasScreenState();
+}
+
+class _DetalhesViagemAbasScreenState extends State<DetalhesViagemAbasScreen> {
+  List<Map<String, dynamic>> _adiantamentos = [];
+  bool _carregandoAdiantamentos = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarAdiantamentos();
+  }
+
+  Future<void> _carregarAdiantamentos() async {
+    try {
+      final viagemId = widget.viagem['id'];
+      final resposta = await supabase
+          .from('adiantamentos')
+          .select()
+          .eq('viagem_id', viagemId)
+          .order('id', ascending: false);
+
+      setState(() {
+        _adiantamentos = List<Map<String, dynamic>>.from(resposta);
+        _carregandoAdiantamentos = false;
+      });
+    } catch (e) {
+      setState(() => _carregandoAdiantamentos = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar adiantamentos: $e')),
+        );
+      }
+    }
+  }
+
+  void _mostrarDialogoAdicionarAdiantamento() {
+    final _descricaoController = TextEditingController();
+    final _valorController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Novo Adiantamento / Vale'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _descricaoController,
+                decoration: const InputDecoration(labelText: 'Descrição (Ex: Diesel, Pedágio)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _valorController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Valor (R\$)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+              onPressed: () async {
+                final descricao = _descricaoController.text.trim();
+                final valor = double.tryParse(_valorController.text.trim().replaceAll(',', '.')) ?? 0.0;
+
+                if (descricao.isNotEmpty && valor > 0) {
+                  Navigator.pop(context);
+                  try {
+                    await supabase.from('adiantamentos').insert({
+                      'viagem_id': widget.viagem['id'],
+                      'descricao': descricao,
+                      'valor': valor,
+                      'data': '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+                    });
+                    _carregarAdiantamentos();
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Erro ao salvar adiantamento: $e')),
+                      );
+                    }
+                  }
+                }
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _apagarAdiantamento(dynamic id) async {
+    try {
+      await supabase.from('adiantamentos').delete().eq('id', id);
+      _carregarAdiantamentos();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao apagar adiantamento: $e')),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final double freteTotal = double.tryParse(viagem['frete_total']?.toString() ?? '0') ?? 0.0;
-    // Exemplo de adiantamentos simulados (pode ligar posteriormente a uma tabela no Supabase)
-    const double adiantamentos = 1200.0; 
-    final double saldoReceber = freteTotal - adiantamentos;
+    final double freteTotal = double.tryParse(widget.viagem['frete_total']?.toString() ?? '0') ?? 0.0;
+    
+    // Soma automática de todos os adiantamentos registados para esta viagem
+    double totalAdiantamentos = 0.0;
+    for (var a in _adiantamentos) {
+      totalAdiantamentos += double.tryParse(a['valor']?.toString() ?? '0') ?? 0.0;
+    }
+
+    final double saldoReceber = freteTotal - totalAdiantamentos;
 
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('${viagem['origem'] ?? 'Origem'} ➔ ${viagem['destino'] ?? 'Destino'}'),
+          title: Text('${widget.viagem['origem'] ?? 'Origem'} ➔ ${widget.viagem['destino'] ?? 'Destino'}'),
           backgroundColor: Colors.indigo,
           foregroundColor: Colors.white,
           bottom: const TabBar(
@@ -2388,7 +2505,7 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
         body: TabBarView(
           children: [
             // ==========================================
-            // ABA 1: RESUMO DO FRETE E DADOS DA VIAGEM
+            // ABA 1: RESUMO DA VIAGEM
             // ==========================================
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -2411,25 +2528,25 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
                             dense: true,
                             leading: const Icon(Icons.inventory_2, color: Colors.green),
                             title: const Text('Produto / Grão'),
-                            subtitle: Text(viagem['produto'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(widget.viagem['produto'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                           ListTile(
                             dense: true,
                             leading: const Icon(Icons.local_shipping, color: Colors.blue),
                             title: const Text('Transportadora'),
-                            subtitle: Text(viagem['transportadora'] ?? 'Não informada', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(widget.viagem['transportadora'] ?? 'Não informada', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                           ListTile(
                             dense: true,
                             leading: const Icon(Icons.person, color: Colors.orange),
                             title: const Text('Motorista'),
-                            subtitle: Text(viagem['motorista'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(widget.viagem['motorista'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                           ListTile(
                             dense: true,
                             leading: const Icon(Icons.calendar_today, color: Colors.purple),
                             title: const Text('Data da Viagem'),
-                            subtitle: Text(viagem['data'] ?? 'N/D', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(widget.viagem['data'] ?? 'N/D', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ),
@@ -2450,8 +2567,8 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
                           ),
                           const Divider(height: 24),
                           ListTile(
-                            title: Text('Peso (Ton): ${viagem['toneladas'] ?? '0'}'),
-                            subtitle: Text('Valor por Tonelada: R\$ ${viagem['valor_tonelada'] ?? '0,00'}'),
+                            title: Text('Peso (Ton): ${widget.viagem['toneladas'] ?? '0'}'),
+                            subtitle: Text('Valor por Tonelada: R\$ ${widget.viagem['valor_tonelada'] ?? '0,00'}'),
                           ),
                           ListTile(
                             title: Text(
@@ -2468,7 +2585,7 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
             ),
 
             // ==========================================
-            // ABA 2: ADIANTAMENTOS / VALES
+            // ABA 2: ADIANTAMENTOS / VALES (COM REGISTO REAL)
             // ==========================================
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -2480,29 +2597,50 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(48),
                     ),
-                    onPressed: () {
-                      // Ação para abrir modal de adicionar adiantamento
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Funcionalidade de Adicionar Adiantamento')),
-                      );
-                    },
+                    onPressed: _mostrarDialogoAdicionarAdiantamento,
                     icon: const Icon(Icons.add),
                     label: const Text('Registar Novo Adiantamento / Vale'),
                   ),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: ListView(
-                      children: const [
-                        Card(
-                          child: ListTile(
-                            leading: Icon(Icons.local_gas_station, color: Colors.amber),
-                            title: Text('Adiantamento para Diesel'),
-                            subtitle: Text('10/10/2026 - Posto de Rodovia'),
-                            trailing: Text('R\$ 1.200,00', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: _carregandoAdiantamentos
+                        ? const Center(child: CircularProgressIndicator())
+                        : _adiantamentos.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'Nenhum adiantamento registado para esta viagem.',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _adiantamentos.length,
+                                itemBuilder: (context, index) {
+                                  final adiantamento = _adiantamentos[index];
+                                  final double valorAdiantamento = double.tryParse(adiantamento['valor']?.toString() ?? '0') ?? 0.0;
+                                  
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(vertical: 6),
+                                    child: ListTile(
+                                      leading: const Icon(Icons.money_off, color: Colors.amber),
+                                      title: Text(adiantamento['descricao'] ?? 'Adiantamento'),
+                                      subtitle: Text('Data: ${adiantamento['data'] ?? 'N/D'}'),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'R\$ ${valorAdiantamento.toStringAsFixed(2)}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 15),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                            onPressed: () => _apagarAdiantamento(adiantamento['id']),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                   ),
                 ],
               ),
@@ -2538,8 +2676,8 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('(-) Adiantamentos:', style: TextStyle(fontSize: 16)),
-                            Text('R\$ ${adiantamentos.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.red)),
+                            const Text('(-) Total Adiantamentos:', style: TextStyle(fontSize: 16)),
+                            Text('R\$ ${totalAdiantamentos.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.red)),
                           ],
                         ),
                         const Divider(height: 32),
