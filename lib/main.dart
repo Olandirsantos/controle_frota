@@ -1448,7 +1448,7 @@ class _TelaCadastroCombustivelState extends State<TelaCadastroCombustivel> {
 }
 
 // ----------------------------------------------------
-// TELA DE LISTA DE VIAGENS
+// TELA DE LISTA DE VIAGENS (CÁLCULO FINANCEIRO COMPLETO)
 // ----------------------------------------------------
 class TelaListaViagens extends StatefulWidget {
   final Map<String, dynamic> veiculo;
@@ -1621,18 +1621,48 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                             final kmInicial = int.tryParse(item['km_inicial']?.toString() ?? '0') ?? 0;
                             final kmFinal = int.tryParse(item['km_final']?.toString() ?? '0') ?? 0;
                             final kmRodados = kmFinal >= kmInicial ? kmFinal - kmInicial : 0;
-                            final freteTotal = item['frete_total'];
+                            final freteTotal = double.tryParse(item['frete_total']?.toString() ?? '0') ?? 0.0;
+                            
+                            // Cálculo financeiro completo incluindo pedágio e tarifas
+                            final adiantamento = double.tryParse(item['adiantamento']?.toString() ?? '0') ?? 0.0;
+                            final saldoRecebido = double.tryParse(item['saldo_recebido']?.toString() ?? '0') ?? 0.0;
+                            final valePedagio = double.tryParse(item['vale_pedagio']?.toString() ?? '0') ?? 0.0;
+                            final tarifas = double.tryParse(item['tarifas']?.toString() ?? '0') ?? 0.0;
+                            
+                            final restantePendente = freteTotal - adiantamento - saldoRecebido - valePedagio - tarifas;
+
+                            final bool quitado = restantePendente <= 0 && freteTotal > 0;
+                            final Color corEstado = quitado ? Colors.green : Colors.orange.shade800;
+                            final String textoEstado = quitado ? 'Quitado' : 'Pendente';
 
                             return Card(
                               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               child: ListTile(
-                                leading: const CircleAvatar(
-                                  backgroundColor: Colors.indigo,
-                                  child: Icon(Icons.map, color: Colors.white),
+                                leading: CircleAvatar(
+                                  backgroundColor: corEstado,
+                                  child: Icon(quitado ? Icons.check : Icons.hourglass_top, color: Colors.white),
                                 ),
-                                title: Text(
-                                  '${item['origem']} ➔ ${item['destino']}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${item['origem']} ➔ ${item['destino']}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: corEstado.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: corEstado),
+                                      ),
+                                      child: Text(
+                                        textoEstado,
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: corEstado),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1640,9 +1670,9 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                     const SizedBox(height: 4),
                                     Text('Data: ${item['data']} | Motorista: ${item['motorista'] ?? 'Não informado'}'),
                                     Text('Distância: $kmRodados km ($kmInicial ➔ $kmFinal)'),
-                                    if (item['toneladas'] != null && item['valor_tonelada'] != null)
+                                    if (item['produto'] != null && item['produto'].toString().isNotEmpty)
                                       Text(
-                                        'Carga: ${item['toneladas']} t | R\$ ${item['valor_tonelada']}/t',
+                                        'Produto: ${item['produto']}',
                                         style: const TextStyle(color: Colors.grey),
                                       ),
                                   ],
@@ -1656,7 +1686,7 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
                                         Text(
-                                          freteTotal != null ? 'R\$ $freteTotal' : 'R\$ 0.00',
+                                          'R\$ ${freteTotal.toStringAsFixed(2)}',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: Colors.green,
@@ -1667,7 +1697,6 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                       ],
                                     ),
                                     const SizedBox(width: 8),
-                                    // Botão rápido para editar a viagem
                                     IconButton(
                                       icon: const Icon(Icons.edit, size: 20, color: Colors.indigo),
                                       onPressed: () async {
@@ -1689,7 +1718,6 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                     ),
                                   ],
                                 ),
-                                // AO CLICAR NA VIAGEM, ABRE AS ABAS DE DETALHES FINANCEIROS
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -2588,34 +2616,51 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
             ),
 
             // ==========================================
-            // ABA 3: SALDO
-            // ==========================================
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child: Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Registo de Saldo', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
-                        const Divider(height: 32),
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Frete Total:', style: TextStyle(fontSize: 16)), Text('R\$ ${freteTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))]),
-                        const SizedBox(height: 12),
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Saldo Recebido:', style: TextStyle(fontSize: 16)), Text('R\$ ${saldoRecebido.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.green))]),
-                        const SizedBox(height: 12),
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Data do Saldo:', style: TextStyle(fontSize: 16)), Text(dataSaldo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))]),
-                        const Divider(height: 24),
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Restante a Receber:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), Text('R\$ ${restantePendente.toStringAsFixed(2)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: restantePendente > 0 ? Colors.orange : Colors.green))]),
-                      ],
-                    ),
+// ABA 3: SALDO (COM DESCONTO COMPLETO)
+// ==========================================
+Padding(
+  padding: const EdgeInsets.all(16.0),
+  child: Center(
+    child: Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Fechamento de Saldo', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
+            const Divider(height: 32),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Frete Total:', style: TextStyle(fontSize: 15)), Text('R\$ ${freteTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))]),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Adiantamento:', style: TextStyle(fontSize: 15)), Text('R\$ ${adiantamento.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, color: Colors.red))]),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Saldo Recebido:', style: TextStyle(fontSize: 15)), Text('R\$ ${saldoRecebido.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, color: Colors.blue))]),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Vale Pedágio:', style: TextStyle(fontSize: 15)), Text('R\$ ${valePedagio.toStringAsFixed(2)}', style: TextStyle(fontSize: 15, color: Colors.amber.shade800))]),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Tarifas:', style: TextStyle(fontSize: 15)), Text('R\$ ${tarifas.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, color: Colors.purple))]),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Restante a Receber:', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                Text(
+                  'R\$ ${restantePendente.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: restantePendente > 0 ? Colors.orange : Colors.green,
                   ),
                 ),
-              ),
+              ],
             ),
+          ],
+        ),
+      ),
+    ),
+  ),
+),
 
             // ==========================================
             // ABA 4: VALE PEDÁGIO
