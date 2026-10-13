@@ -246,6 +246,21 @@ class _TelaDetalhesVeiculoState extends State<TelaDetalhesVeiculo> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          // Botão de Manutenções no topo igual aos outros
+          IconButton(
+            icon: const Icon(Icons.build),
+            tooltip: 'Controle de Manutenções',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TelaListaManutencoes(veiculo: widget.veiculo),
+                ),
+              );
+              setState(() => _carregando = true);
+              _carregarManutencoes();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.analytics),
             tooltip: 'Relatório de Lucro Mensal',
@@ -312,7 +327,7 @@ class _TelaDetalhesVeiculoState extends State<TelaDetalhesVeiculo> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Custo Total (Manutenções):',
+                        'Custo Total Geral (Manutenções):',
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       Text(
@@ -327,80 +342,49 @@ class _TelaDetalhesVeiculoState extends State<TelaDetalhesVeiculo> {
                   ),
                 ),
                 Expanded(
-                  child: manutencoes.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Nenhuma manutenção lançada. Toque no + para adicionar.',
-                            style: TextStyle(fontSize: 15, color: Colors.grey),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.build_circle, size: 64, color: Colors.orange),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Gestão de Manutenções Mensais',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: manutencoes.length,
-                          itemBuilder: (context, index) {
-                            final item = manutencoes[index];
-                            final proximaKm = item['proxima_km'];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: ListTile(
-                                leading: const CircleAvatar(
-                                  backgroundColor: Colors.orange,
-                                  child: Icon(Icons.build, color: Colors.white),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Toque no botão abaixo ou no ícone de chave inglesa no topo para aceder à lista detalhada com filtros por mês e custos mensais.',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            ),
+                            icon: const Icon(Icons.list_alt),
+                            label: const Text('Abrir Lista de Manutenções por Mês', style: TextStyle(fontSize: 15)),
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => TelaListaManutencoes(veiculo: widget.veiculo),
                                 ),
-                                title: Text(
-                                  item['descricao'] ?? '',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Text('Data: ${item['data']} | KM: ${item['quilometragem']}'),
-                                    if (proximaKm != null && proximaKm.toString().isNotEmpty)
-                                      Text(
-                                        'Próxima Revisão: $proximaKm km',
-                                        style: const TextStyle(
-                                          color: Colors.blueAccent,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                isThreeLine: proximaKm != null && proximaKm.toString().isNotEmpty,
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'R\$ ${item['custo']}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(Icons.edit, size: 18, color: Colors.grey),
-                                  ],
-                                ),
-                                onTap: () async {
-                                  final atualizado = await Navigator.push<bool>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => TelaCadastroManutencao(
-                                        veiculoId: widget.veiculo['id'],
-                                        manutencaoExistente: item,
-                                      ),
-                                    ),
-                                  );
-
-                                  if (atualizado == true) {
-                                    setState(() => _carregando = true);
-                                    _carregarManutencoes();
-                                  }
-                                },
-                              ),
-                            );
-                          },
-                        ),
+                              );
+                              setState(() => _carregando = true);
+                              _carregarManutencoes();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
