@@ -2378,6 +2378,7 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
   List<Map<String, dynamic>> manutencoes = [];
   bool _carregando = true;
   String _mesSelecionado = 'Todos';
+  bool _alertaRevisaoPendente = false;
 
   @override
   void initState() {
@@ -2394,8 +2395,22 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
           .eq('veiculo_id', veiculoId)
           .order('id', ascending: false);
 
+      final lista = List<Map<String, dynamic>>.from(resposta);
+      
+      // Verifica se existe alguma revisão pendente/vencida (opcional, mantendo a lógica de alerta)
+      bool temAlerta = false;
+      for (var m in lista) {
+        final proxima = int.tryParse(m['proxima_km']?.toString() ?? '0') ?? 0;
+        final kmAtual = int.tryParse(widget.veiculo['km_atual']?.toString() ?? '0') ?? 0;
+        if (proxima > 0 && kmAtual >= proxima) {
+          temAlerta = true;
+          break;
+        }
+      }
+
       setState(() {
-        manutencoes = List<Map<String, dynamic>>.from(resposta);
+        manutencoes = lista;
+        _alertaRevisaoPendente = temAlerta;
         _carregando = false;
       });
     } catch (e) {
@@ -2439,7 +2454,7 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
     return manutencoes.where((m) => _extrairMesAno(m['data']?.toString()) == _mesSelecionado).toList();
   }
 
-  double get _custoTotalGeral {
+  double get _custoTotalFiltrado {
     double total = 0.0;
     for (var m in _manutencoesFiltradas) {
       final custo = m['custo'];
@@ -2470,6 +2485,23 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                if (_alertaRevisaoPendente)
+                  Container(
+                    width: double.infinity,
+                    color: Colors.red.shade600,
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.warning, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          '⚠️ ATENÇÃO: Revisão Pendente/Vencida!',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   color: Colors.orange.shade50,
@@ -2509,7 +2541,7 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
                             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'R\$ ${_custoTotalGeral.toStringAsFixed(2)}',
+                            'R\$ ${_custoTotalFiltrado.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
@@ -2533,6 +2565,7 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
                           itemCount: exibeManutencoes.length,
                           itemBuilder: (context, index) {
                             final item = exibeManutencoes[index];
+                            final proximaKm = item['proxima_km'];
                             final custo = double.tryParse(item['custo']?.toString() ?? '0') ?? 0.0;
 
                             return Card(
@@ -2543,62 +2576,56 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
                                   child: Icon(Icons.build, color: Colors.white),
                                 ),
                                 title: Text(
-                                  item['descricao'] ?? 'Serviço',
+                                  item['descricao'] ?? '',
                                   style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const SizedBox(height: 4),
-                                    Text('Data: ${item['data']} | KM: ${item['quilometragem'] ?? 'N/D'}'),
-                                    if (item['proxima_km'] != null && item['proxima_km'].toString().isNotEmpty)
+                                    Text('Data: ${item['data']} | KM: ${item['quilometragem']}'),
+                                    if (proximaKm != null && proximaKm.toString().isNotEmpty)
                                       Text(
-                                        'Próxima Revisão: KM ${item['proxima_km']}',
-                                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                        'Próxima Revisão: $proximaKm km',
+                                        style: const TextStyle(
+                                          color: Colors.blueAccent,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                   ],
                                 ),
-                                isThreeLine: true,
+                                isThreeLine: proximaKm != null && proximaKm.toString().isNotEmpty,
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          'R\$ ${custo.toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.red,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        const Text('Custo', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                      ],
+                                    Text(
+                                      'R\$ ${custo.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green,
+                                        fontSize: 15,
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, size: 20, color: Colors.orange),
-                                      onPressed: () async {
-                                        final atualizado = await Navigator.push<bool>(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => TelaCadastroManutencao(
-                                              veiculoId: widget.veiculo['id'],
-                                              manutencaoExistente: item,
-                                            ),
-                                          ),
-                                        );
-
-                                        if (atualizado == true) {
-                                          setState(() => _carregando = true);
-                                          _carregarManutencoes();
-                                        }
-                                      },
-                                    ),
+                                    const Icon(Icons.edit, size: 18, color: Colors.grey),
                                   ],
                                 ),
+                                onTap: () async {
+                                  final atualizado = await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => TelaCadastroManutencao(
+                                        veiculoId: widget.veiculo['id'],
+                                        manutencaoExistente: item,
+                                      ),
+                                    ),
+                                  );
+
+                                  if (atualizado == true) {
+                                    setState(() => _carregando = true);
+                                    _carregarManutencoes();
+                                  }
+                                },
                               ),
                             );
                           },
