@@ -2186,7 +2186,6 @@ class TelaCadastroVeiculo extends StatefulWidget {
 
   @override
   State<TelaCadastroVeiculo> createState() => _TelaCadastroVeiculoState();
-}
 
 class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
   final _formKey = GlobalKey<FormState>();
