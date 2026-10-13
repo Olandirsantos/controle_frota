@@ -2460,7 +2460,7 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
 }
 
 // ====================================================
-// TELA DE DETALHES DA VIAGEM COM 5 ABAS FINANCEIRAS
+// TELA DE DETALHES DA VIAGEM COM 5 ABAS (CORRIGIDA)
 // ====================================================
 class DetalhesViagemAbasScreen extends StatelessWidget {
   final Map<String, dynamic> viagem;
@@ -2488,14 +2488,14 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
     final double restantePendente = freteTotal - adiantamento - saldoRecebido;
 
     return DefaultTabController(
-      length: 5, // Agora com 5 abas
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: Text('${viagem['origem'] ?? 'Origem'} ➔ ${viagem['destino'] ?? 'Destino'}'),
           backgroundColor: Colors.indigo,
           foregroundColor: Colors.white,
           bottom: const TabBar(
-            isScrollable: true, // Permite deslizar as abas suavemente no ecran
+            isScrollable: true,
             indicatorColor: Colors.amber,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
@@ -2549,7 +2549,7 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
                           ListTile(title: const Text('Frete Total'), trailing: Text('R\$ ${freteTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16))),
                           ListTile(title: const Text('Adiantamento'), trailing: Text('R\$ ${adiantamento.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red, fontSize: 16))),
                           ListTile(title: const Text('Saldo Recebido'), trailing: Text('R\$ ${saldoRecebido.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16))),
-                          ListTile(title: const Text('Vale Pedágio'), trailing: Text('R\$ ${valePedagio.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade800, fontSize: 16))),
+                          ListTile(title: const Text('Vale Pedágio'), trailing: Text('R\$ ${valePedagio.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade800, fontSize: 16))),
                           ListTile(title: const Text('Tarifas'), trailing: Text('R\$ ${tarifas.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple, fontSize: 16))),
                         ],
                       ),
@@ -2635,7 +2635,7 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         const Text('Registo de Vale Pedágio', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
                         const Divider(height: 32),
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Valor do Pedágio:', style: TextStyle(fontSize: 16)), Text('R\$ ${valePedagio.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber))]),
+                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Valor do Pedágio:', style: TextStyle(fontSize: 16)), Text('R\$ ${valePedagio.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber.shade800))]),
                         const SizedBox(height: 16),
                         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Data:', style: TextStyle(fontSize: 16)), Text(dataPedagio, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))]),
                       ],
