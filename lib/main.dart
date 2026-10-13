@@ -2362,6 +2362,273 @@ class _TelaCadastroManutencaoState extends State<TelaCadastroManutencao> {
   }
 }
 
+// ----------------------------------------------------
+// TELA DE LISTA DE MANUTENÇÕES (COM FILTRO MENSAL)
+// ----------------------------------------------------
+class TelaListaManutencoes extends StatefulWidget {
+  final Map<String, dynamic> veiculo;
+
+  const TelaListaManutencoes({super.key, required this.veiculo});
+
+  @override
+  State<TelaListaManutencoes> createState() => _TelaListaManutencoesState();
+}
+
+class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
+  List<Map<String, dynamic>> manutencoes = [];
+  bool _carregando = true;
+  String _mesSelecionado = 'Todos';
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarManutencoes();
+  }
+
+  Future<void> _carregarManutencoes() async {
+    try {
+      final veiculoId = widget.veiculo['id'];
+      final resposta = await supabase
+          .from('manutencoes')
+          .select()
+          .eq('veiculo_id', veiculoId)
+          .order('id', ascending: false);
+
+      setState(() {
+        manutencoes = List<Map<String, dynamic>>.from(resposta);
+        _carregando = false;
+      });
+    } catch (e) {
+      setState(() => _carregando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar manutenções: $e')),
+        );
+      }
+    }
+  }
+
+  String _extrairMesAno(String? dataStr) {
+    if (dataStr == null || dataStr.isEmpty) return 'Sem Data';
+    try {
+      if (dataStr.contains('/')) {
+        final partes = dataStr.split('/');
+        if (partes.length == 3) {
+          return '${partes[1]}/${partes[2]}';
+        }
+      }
+    } catch (_) {}
+    return 'Outros';
+  }
+
+  List<String> get _listaMeses {
+    final Set<String> meses = {'Todos'};
+    for (var m in manutencoes) {
+      final mesAno = _extrairMesAno(m['data']?.toString());
+      if (mesAno != 'Sem Data' && mesAno != 'Outros') {
+        meses.add(mesAno);
+      }
+    }
+    return meses.toList();
+  }
+
+  List<Map<String, dynamic>> get _manutencoesFiltradas {
+    if (_mesSelecionado == 'Todos') {
+      return manutencoes;
+    }
+    return manutencoes.where((m) => _extrairMesAno(m['data']?.toString()) == _mesSelecionado).toList();
+  }
+
+  double get _custoTotalGeral {
+    double total = 0.0;
+    for (var m in _manutencoesFiltradas) {
+      final custo = m['custo'];
+      if (custo != null) {
+        if (custo is num) {
+          total += custo.toDouble();
+        } else if (custo is String) {
+          total += double.tryParse(custo.replaceAll(',', '.')) ?? 0.0;
+        }
+      }
+    }
+    return total;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final modelo = widget.veiculo['modelo'] ?? 'Veículo';
+    final listaMeses = _listaMeses;
+    final exibeManutencoes = _manutencoesFiltradas;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Manutenções: $modelo'),
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+      ),
+      body: _carregando
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  color: Colors.orange.shade50,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Filtrar por Mês:',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          DropdownButton<String>(
+                            value: listaMeses.contains(_mesSelecionado) ? _mesSelecionado : 'Todos',
+                            items: listaMeses.map((String mes) {
+                              return DropdownMenuItem<String>(
+                                value: mes,
+                                child: Text(mes == 'Todos' ? '📅 Todos os Meses' : '📅 Mês $mes'),
+                              );
+                            }).toList(),
+                            onChanged: (novoValor) {
+                              if (novoValor != null) {
+                                setState(() {
+                                  _mesSelecionado = novoValor;
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _mesSelecionado == 'Todos' ? 'Custo Total Geral:' : 'Custo do Mês ($_mesSelecionado):',
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'R\$ ${_custoTotalGeral.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: exibeManutencoes.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Nenhuma manutenção registada para este período.',
+                            style: TextStyle(fontSize: 15, color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: exibeManutencoes.length,
+                          itemBuilder: (context, index) {
+                            final item = exibeManutencoes[index];
+                            final custo = double.tryParse(item['custo']?.toString() ?? '0') ?? 0.0;
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: ListTile(
+                                leading: const CircleAvatar(
+                                  backgroundColor: Colors.orange,
+                                  child: Icon(Icons.build, color: Colors.white),
+                                ),
+                                title: Text(
+                                  item['descricao'] ?? 'Serviço',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text('Data: ${item['data']} | KM: ${item['quilometragem'] ?? 'N/D'}'),
+                                    if (item['proxima_km'] != null && item['proxima_km'].toString().isNotEmpty)
+                                      Text(
+                                        'Próxima Revisão: KM ${item['proxima_km']}',
+                                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                      ),
+                                  ],
+                                ),
+                                isThreeLine: true,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'R\$ ${custo.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const Text('Custo', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 20, color: Colors.orange),
+                                      onPressed: () async {
+                                        final atualizado = await Navigator.push<bool>(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => TelaCadastroManutencao(
+                                              veiculoId: widget.veiculo['id'],
+                                              manutencaoExistente: item,
+                                            ),
+                                          ),
+                                        );
+
+                                        if (atualizado == true) {
+                                          setState(() => _carregando = true);
+                                          _carregarManutencoes();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final adicionado = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TelaCadastroManutencao(veiculoId: widget.veiculo['id']),
+            ),
+          );
+
+          if (adicionado == true) {
+            setState(() => _carregando = true);
+            _carregarManutencoes();
+          }
+        },
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Nova Manutenção'),
+      ),
+    );
+  }
+}
+
 // ==========================================
 // TELA DE CADASTRO DE VEÍCULO
 // ==========================================
