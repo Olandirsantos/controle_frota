@@ -1648,36 +1648,55 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                   ],
                                 ),
                                 isThreeLine: true,
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      freteTotal != null ? 'R\$ $freteTotal' : 'R\$ 0.00',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green,
-                                        fontSize: 15,
-                                      ),
+                                    Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          freteTotal != null ? 'R\$ $freteTotal' : 'R\$ 0.00',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const Text('Frete Total', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                      ],
                                     ),
-                                    const Text('Frete Total', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                    const SizedBox(width: 8),
+                                    // Botão rápido para editar a viagem
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 20, color: Colors.indigo),
+                                      onPressed: () async {
+                                        final atualizado = await Navigator.push<bool>(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => TelaCadastroViagem(
+                                              veiculoId: widget.veiculo['id'],
+                                              viagemExistente: item,
+                                            ),
+                                          ),
+                                        );
+
+                                        if (atualizado == true) {
+                                          setState(() => _carregando = true);
+                                          _carregarViagens();
+                                        }
+                                      },
+                                    ),
                                   ],
                                 ),
-                                onTap: () async {
-                                  final atualizado = await Navigator.push<bool>(
+                                // AO CLICAR NA VIAGEM, ABRE AS ABAS DE DETALHES FINANCEIROS
+                                onTap: () {
+                                  Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => TelaCadastroViagem(
-                                        veiculoId: widget.veiculo['id'],
-                                        viagemExistente: item,
-                                      ),
+                                      builder: (context) => DetalhesViagemAbasScreen(viagem: item),
                                     ),
                                   );
-
-                                  if (atualizado == true) {
-                                    setState(() => _carregando = true);
-                                    _carregarViagens();
-                                  }
                                 },
                               ),
                             );
@@ -2327,6 +2346,224 @@ class _TelaCadastroVeiculoState extends State<TelaCadastroVeiculo> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ====================================================
+// TELA DE DETALHES DA VIAGEM COM ABAS FINANCEIRAS
+// ====================================================
+class DetalhesViagemAbasScreen extends StatelessWidget {
+  final Map<String, dynamic> viagem;
+
+  const DetalhesViagemAbasScreen({super.key, required this.viagem});
+
+  @override
+  Widget build(BuildContext context) {
+    final double freteTotal = double.tryParse(viagem['frete_total']?.toString() ?? '0') ?? 0.0;
+    // Exemplo de adiantamentos simulados (pode ligar posteriormente a uma tabela no Supabase)
+    const double adiantamentos = 1200.0; 
+    final double saldoReceber = freteTotal - adiantamentos;
+
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('${viagem['origem'] ?? 'Origem'} ➔ ${viagem['destino'] ?? 'Destino'}'),
+          backgroundColor: Colors.indigo,
+          foregroundColor: Colors.white,
+          bottom: const TabBar(
+            indicatorColor: Colors.amber,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: [
+              Tab(icon: Icon(Icons.receipt_long), text: 'Resumo'),
+              Tab(icon: Icon(Icons.money_off), text: 'Adiantamentos'),
+              Tab(icon: Icon(Icons.account_balance_wallet), text: 'Saldo'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // ==========================================
+            // ABA 1: RESUMO DO FRETE E DADOS DA VIAGEM
+            // ==========================================
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ListView(
+                children: [
+                  Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Informações da Carga e Trajeto',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo),
+                          ),
+                          const Divider(height: 24),
+                          ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.inventory_2, color: Colors.green),
+                            title: const Text('Produto / Grão'),
+                            subtitle: Text(viagem['produto'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                          ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.local_shipping, color: Colors.blue),
+                            title: const Text('Transportadora'),
+                            subtitle: Text(viagem['transportadora'] ?? 'Não informada', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                          ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.person, color: Colors.orange),
+                            title: const Text('Motorista'),
+                            subtitle: Text(viagem['motorista'] ?? 'Não informado', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                          ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.calendar_today, color: Colors.purple),
+                            title: const Text('Data da Viagem'),
+                            subtitle: Text(viagem['data'] ?? 'N/D', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Valores e Quilometragem',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo),
+                          ),
+                          const Divider(height: 24),
+                          ListTile(
+                            title: Text('Peso (Ton): ${viagem['toneladas'] ?? '0'}'),
+                            subtitle: Text('Valor por Tonelada: R\$ ${viagem['valor_tonelada'] ?? '0,00'}'),
+                          ),
+                          ListTile(
+                            title: Text(
+                              'Frete Total: R\$ ${freteTotal.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ==========================================
+            // ABA 2: ADIANTAMENTOS / VALES
+            // ==========================================
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    onPressed: () {
+                      // Ação para abrir modal de adicionar adiantamento
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Funcionalidade de Adicionar Adiantamento')),
+                      );
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Registar Novo Adiantamento / Vale'),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView(
+                      children: const [
+                        Card(
+                          child: ListTile(
+                            leading: Icon(Icons.local_gas_station, color: Colors.amber),
+                            title: Text('Adiantamento para Diesel'),
+                            subtitle: Text('10/10/2026 - Posto de Rodovia'),
+                            trailing: Text('R\$ 1.200,00', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ==========================================
+            // ABA 3: SALDO / FECHAMENTO DA VIAGEM
+            // ==========================================
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Fechamento Financeiro',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo),
+                        ),
+                        const Divider(height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Frete Total:', style: TextStyle(fontSize: 16)),
+                            Text('R\$ ${freteTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('(-) Adiantamentos:', style: TextStyle(fontSize: 16)),
+                            Text('R\$ ${adiantamentos.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.red)),
+                          ],
+                        ),
+                        const Divider(height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('(=) Saldo a Receber:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text(
+                              'R\$ ${saldoReceber.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: saldoReceber >= 0 ? Colors.green : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
