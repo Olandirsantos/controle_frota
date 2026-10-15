@@ -2347,7 +2347,7 @@ class _TelaCadastroManutencaoState extends State<TelaCadastroManutencao> {
 }
 
 // ----------------------------------------------------
-// TELA DE LISTA DE MANUTENÇÕES (COM FILTRO MENSAL)
+// TELA DE LISTA DE MANUTENÇÕES (COM FILTRO MENSAL E PESQUISA)
 // ----------------------------------------------------
 class TelaListaManutencoes extends StatefulWidget {
   final Map<String, dynamic> veiculo;
@@ -2362,12 +2362,19 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
   List<Map<String, dynamic>> manutencoes = [];
   bool _carregando = true;
   String _mesSelecionado = 'Todos';
+  final TextEditingController _pesquisaController = TextEditingController();
   bool _alertaRevisaoPendente = false;
 
   @override
   void initState() {
     super.initState();
     _carregarManutencoes();
+  }
+
+  @override
+  void dispose() {
+    _pesquisaController.dispose();
+    super.dispose();
   }
 
   Future<void> _carregarManutencoes() async {
@@ -2381,12 +2388,11 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
 
       final lista = List<Map<String, dynamic>>.from(resposta);
       
-      // Verifica se existe alguma revisão pendente/vencida (opcional, mantendo a lógica de alerta)
+      final kmAtualVeiculo = double.tryParse(widget.veiculo['quilometragem']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0.0;
       bool temAlerta = false;
       for (var m in lista) {
-        final proxima = int.tryParse(m['proxima_km']?.toString() ?? '0') ?? 0;
-        final kmAtual = int.tryParse(widget.veiculo['km_atual']?.toString() ?? '0') ?? 0;
-        if (proxima > 0 && kmAtual >= proxima) {
+        final proxima = double.tryParse(m['proxima_km']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0.0;
+        if (proxima > 0 && kmAtualVeiculo >= proxima) {
           temAlerta = true;
           break;
         }
@@ -2432,10 +2438,18 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
   }
 
   List<Map<String, dynamic>> get _manutencoesFiltradas {
-    if (_mesSelecionado == 'Todos') {
-      return manutencoes;
-    }
-    return manutencoes.where((m) => _extrairMesAno(m['data']?.toString()) == _mesSelecionado).toList();
+    return manutencoes.where((m) {
+      // Filtro por Mês
+      final mesAno = _extrairMesAno(m['data']?.toString());
+      final passaMes = (_mesSelecionado == 'Todos' || mesAno == _mesSelecionado);
+
+      // Filtro por Texto de Pesquisa (descrição)
+      final termoPesquisa = _pesquisaController.text.trim().toLowerCase();
+      final descricao = (m['descricao'] ?? '').toString().toLowerCase();
+      final passaTexto = termoPesquisa.isEmpty || descricao.contains(termoPesquisa);
+
+      return passaMes && passaTexto;
+    }).toList();
   }
 
   double get _custoTotalFiltrado {
@@ -2487,10 +2501,37 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
                     ),
                   ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.all(16),
                   color: Colors.orange.shade50,
                   child: Column(
                     children: [
+                      // Barra de Pesquisa por Texto
+                      TextField(
+                        controller: _pesquisaController,
+                        onChanged: (value) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Pesquisar descrição (ex: pátio, óleo, filtro)...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _pesquisaController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    setState(() {
+                                      _pesquisaController.clear();
+                                    });
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -2521,7 +2562,9 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _mesSelecionado == 'Todos' ? 'Custo Total Geral:' : 'Custo do Mês ($_mesSelecionado):',
+                            _mesSelecionado == 'Todos' && _pesquisaController.text.isEmpty
+                                ? 'Custo Total Geral:'
+                                : 'Custo Filtrado:',
                             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           ),
                           Text(
@@ -2541,7 +2584,7 @@ class _TelaListaManutencoesState extends State<TelaListaManutencoes> {
                   child: exibeManutencoes.isEmpty
                       ? const Center(
                           child: Text(
-                            'Nenhuma manutenção registada para este período.',
+                            'Nenhuma manutenção encontrada com estes filtros.',
                             style: TextStyle(fontSize: 15, color: Colors.grey),
                           ),
                         )
