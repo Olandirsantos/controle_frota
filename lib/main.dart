@@ -286,6 +286,19 @@ class _TelaDetalhesVeiculoState extends State<TelaDetalhesVeiculo> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.radio_button_checked), // Ícone para Pneus
+            tooltip: 'Controle de Pneus',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TelaListaPneus(veiculo: widget.veiculo),
+                ),
+              );
+              // Recarrega se necessário ao voltar
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.alt_route),
             tooltip: 'Controle de Viagens',
             onPressed: () {
@@ -3039,6 +3052,481 @@ Padding(
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------
+// TELA DE LISTA DE PNEUS DO VEÍCULO
+// ----------------------------------------------------
+class TelaListaPneus extends StatefulWidget {
+  final Map<String, dynamic> veiculo;
+
+  const TelaListaPneus({super.key, required this.veiculo});
+
+  @override
+  State<TelaListaPneus> createState() => _TelaListaPneusState();
+}
+
+class _TelaListaPneusState extends State<TelaListaPneus> {
+  List<Map<String, dynamic>> pneus = [];
+  bool _carregando = true;
+  String _filtroStatus = 'Todos';
+  final TextEditingController _pesquisaController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPneus();
+  }
+
+  @override
+  void dispose() {
+    _pesquisaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _carregarPneus() async {
+    try {
+      final veiculoId = widget.veiculo['id'];
+      final resposta = await supabase
+          .from('pneus')
+          .select()
+          .eq('veiculo_id', veiculoId)
+          .order('id', ascending: false);
+
+      setState(() {
+        pneus = List<Map<String, dynamic>>.from(resposta);
+        _carregando = false;
+      });
+    } catch (e) {
+      setState(() => _carregando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar pneus: $e')),
+        );
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> get _pneusFiltrados {
+    final kmAtualVeiculo = double.tryParse(widget.veiculo['quilometragem']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0.0;
+
+    return pneus.where((p) {
+      // Filtro por Status
+      final status = p['status'] ?? 'Em uso';
+      final passaStatus = (_filtroStatus == 'Todos' || status == _filtroStatus);
+
+      // Filtro por Texto (Número de Fogo, Marca ou Posição)
+      final termo = _pesquisaController.text.trim().toLowerCase();
+      final numeroFogo = (p['numero_fogo'] ?? '').toString().toLowerCase();
+      final marca = (p['marca'] ?? '').toString().toLowerCase();
+      final posicao = (p['posicao'] ?? '').toString().toLowerCase();
+      
+      final passaTexto = termo.isEmpty || 
+          numeroFogo.contains(termo) || 
+          marca.contains(termo) || 
+          posicao.contains(termo);
+
+      return passaStatus && passaTexto;
+    }).toList();
+  }
+
+  double get _custoTotalPneus {
+    double total = 0.0;
+    for (var p in _pneusFiltrados) {
+      final custo = p['custo'];
+      if (custo != null) {
+        if (custo is num) {
+          total += custo.toDouble();
+        } else if (custo is String) {
+          total += double.tryParse(custo.replaceAll(',', '.')) ?? 0.0;
+        }
+      }
+    }
+    return total;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final modelo = widget.veiculo['modelo'] ?? 'Veículo';
+    final listaExibida = _pneusFiltrados;
+    final kmAtualVeiculo = double.tryParse(widget.veiculo['quilometragem']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ?? '0') ?? 0.0;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Controle de Pneus: $modelo'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+      ),
+      body: _carregando
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Colors.teal.shade50,
+                  child: Column(
+                    children: [
+                      // Barra de Pesquisa
+                      TextField(
+                        controller: _pesquisaController,
+                        onChanged: (value) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Pesquisar nº fogo, marca, posição...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _pesquisaController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () => setState(() => _pesquisaController.clear()),
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Filtrar por Status:',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          DropdownButton<String>(
+                            value: _filtroStatus,
+                            items: const [
+                              DropdownMenuItem(value: 'Todos', child: Text('Todos os Pneus')),
+                              DropdownMenuItem(value: 'Em uso', child: Text('Em uso')),
+                              DropdownMenuItem(value: 'Estoque', child: Text('Estoque')),
+                              DropdownMenuItem(value: 'Reformado/Recapado', child: Text('Reformado/Recapado')),
+                              DropdownMenuItem(value: 'Descartado', child: Text('Descartado')),
+                            ],
+                            onChanged: (novo) {
+                              if (novo != null) setState(() => _filtroStatus = novo);
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Custo Total (Filtrado):',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'R\$ ${_custoTotalPneus.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: listaExibida.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Nenhum pneu encontrado com estes filtros.',
+                            style: TextStyle(fontSize: 15, color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: listaExibida.length,
+                          itemBuilder: (context, index) {
+                            final pneu = listaExibida[index];
+                            final kmInstalacao = int.tryParse(pneu['quilometragem_instalacao']?.toString() ?? '0') ?? 0;
+                            final kmRodados = (kmAtualVeiculo > kmInstalacao) ? (kmAtualVeiculo - kmInstalacao) : 0;
+                            final custo = double.tryParse(pneu['custo']?.toString() ?? '0') ?? 0.0;
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.teal,
+                                  child: const Icon(Icons.radio_button_checked, color: Colors.white),
+                                ),
+                                title: Text(
+                                  'Nº Fogo: ${pneu['numero_fogo'] ?? 'Sem número'}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text('Posição: ${pneu['posicao'] ?? 'Não informada'}'),
+                                    Text('Marca: ${pneu['marca'] ?? '-'} | Medida: ${pneu['medida'] ?? '-'}'),
+                                    Text(
+                                      'Rodados: ${kmRodados.toStringAsFixed(0)} km (Instalação: $kmInstalacao km)',
+                                      style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                                    ),
+                                    Text('Status: ${pneu['status'] ?? 'Em uso'}', style: const TextStyle(fontStyle: FontStyle.italic)),
+                                  ],
+                                ),
+                                isThreeLine: true,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'R\$ ${custo.toStringAsFixed(2)}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.edit, size: 18, color: Colors.grey),
+                                  ],
+                                ),
+                                onTap: () async {
+                                  final atualizado = await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => TelaCadastroPneu(
+                                        veiculoId: widget.veiculo['id'],
+                                        pneuExistente: pneu,
+                                      ),
+                                    ),
+                                  );
+
+                                  if (atualizado == true) {
+                                    setState(() => _carregando = true);
+                                    _carregarPneus();
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final adicionado = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TelaCadastroPneu(veiculoId: widget.veiculo['id']),
+            ),
+          );
+
+          if (adicionado == true) {
+            setState(() => _carregando = true);
+            _carregarPneus();
+          }
+        },
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Novo Pneu'),
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------
+// TELA DE CADASTRO / EDIÇÃO DE PNEU
+// ----------------------------------------------------
+class TelaCadastroPneu extends StatefulWidget {
+  final int veiculoId;
+  final Map<String, dynamic>? pneuExistente;
+
+  const TelaCadastroPneu({super.key, required this.veiculoId, this.pneuExistente});
+
+  @override
+  State<TelaCadastroPneu> createState() => _TelaCadastroPneuState();
+}
+
+class _TelaCadastroPneuState extends State<TelaCadastroPneu> {
+  final _formKey = GlobalKey<FormState>();
+  final _numeroFogoController = TextEditingController();
+  final _marcaController = TextEditingController();
+  final _medidaController = TextEditingController();
+  final _posicaoController = TextEditingController();
+  final _kmInstalacaoController = TextEditingController();
+  final _custoController = TextEditingController();
+  final _dataInstalacaoController = TextEditingController();
+  
+  String _statusSelecionado = 'Em uso';
+  bool _salvando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.pneuExistente != null) {
+      final p = widget.pneuExistente!;
+      _numeroFogoController.text = p['numero_fogo']?.toString() ?? '';
+      _marcaController.text = p['marca']?.toString() ?? '';
+      _medidaController.text = p['medida']?.toString() ?? '';
+      _posicaoController.text = p['posicao']?.toString() ?? '';
+      _kmInstalacaoController.text = p['quilometragem_instalacao']?.toString() ?? '';
+      _custoController.text = p['custo']?.toString() ?? '';
+      _dataInstalacaoController.text = p['data_instalacao']?.toString() ?? '';
+      _statusSelecionado = p['status']?.toString() ?? 'Em uso';
+    } else {
+      // Sugere a data de hoje por predefinição
+      final agora = DateTime.now();
+      _dataInstalacaoController.text = '${agora.day.toString().padLeft(2, '0')}/${agora.month.toString().padLeft(2, '0')}/${agora.year}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _numeroFogoController.dispose();
+    _marcaController.dispose();
+    _medidaController.dispose();
+    _posicaoController.dispose();
+    _kmInstalacaoController.dispose();
+    _custoController.dispose();
+    _dataInstalacaoController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _salvarPneu() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _salvando = true);
+
+    try {
+      final dados = {
+        'veiculo_id': widget.veiculoId,
+        'numero_fogo': _numeroFogoController.text.trim(),
+        'marca': _marcaController.text.trim(),
+        'medida': _medidaController.text.trim(),
+        'posicao': _posicaoController.text.trim(),
+        'quilometragem_instalacao': int.tryParse(_kmInstalacaoController.text.trim()) ?? 0,
+        'custo': double.tryParse(_custoController.text.trim().replaceAll(',', '.')) ?? 0.0,
+        'status': _statusSelecionado,
+        'data_instalacao': _dataInstalacaoController.text.trim(),
+      };
+
+      if (widget.pneuExistente == null) {
+        await supabase.from('pneus').insert(dados);
+      } else {
+        await supabase.from('pneus').update(dados).eq('id', widget.pneuExistente!['id']);
+      }
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      setState(() => _salvando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar pneu: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final edicao = widget.pneuExistente != null;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(edicao ? 'Editar Pneu' : 'Registar Novo Pneu'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: _numeroFogoController,
+                decoration: const InputDecoration(labelText: 'Número de Fogo / Série *'),
+                validator: (v) => v == null || v.isEmpty ? 'Informe o número de identificação do pneu' : null,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _marcaController,
+                      decoration: const InputDecoration(labelText: 'Marca (ex: Michelin, Firestone)'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _medidaController,
+                      decoration: const InputDecoration(labelText: 'Medida (ex: 295/80R22.5)'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _posicaoController,
+                decoration: const InputDecoration(labelText: 'Posição no Veículo (ex: Tração Externo Direito)'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _kmInstalacaoController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'KM de Instalação *'),
+                      validator: (v) => v == null || v.isEmpty ? 'Informe o KM' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _custoController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Custo (R\$)'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _dataInstalacaoController,
+                decoration: const InputDecoration(labelText: 'Data de Instalação (DD/MM/AAAA)'),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _statusSelecionado,
+                decoration: const InputDecoration(labelText: 'Status do Pneu'),
+                items: const [
+                  DropdownMenuItem(value: 'Em uso', child: Text('Em uso')),
+                  DropdownMenuItem(value: 'Estoque', child: Text('Estoque')),
+                  DropdownMenuItem(value: 'Reformado/Recapado', child: Text('Reformado/Recapado')),
+                  DropdownMenuItem(value: 'Descartado', child: Text('Descartado')),
+                ],
+                onChanged: (novo) {
+                  if (novo != null) setState(() => _statusSelecionado = novo);
+                },
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: _salvando ? null : _salvarPneu,
+                child: _salvando
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(edicao ? 'Atualizar Pneu' : 'Guardar Pneu', style: const TextStyle(fontSize: 16)),
+              ),
+            ],
+          ),
         ),
       ),
     );
