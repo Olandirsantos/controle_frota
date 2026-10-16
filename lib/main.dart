@@ -3576,7 +3576,9 @@ class _TelaCadastroPneuState extends State<TelaCadastroPneu> {
 // TELA DE DASHBOARD FINANCEIRO E INDICADORES DA FROTA
 // ----------------------------------------------------
 class TelaDashboard extends StatefulWidget {
-  const TelaDashboard({super.key});
+  final Map<String, dynamic>? veiculoEspecifico; // Opcional: se vier preenchido, filtra só para este veículo
+
+  const TelaDashboard({super.key, this.veiculoEspecifico});
 
   @override
   State<TelaDashboard> createState() => _TelaDashboardState();
@@ -3591,20 +3593,44 @@ class _TelaDashboardState extends State<TelaDashboard> {
   int _totalVeiculos = 0;
   int _totalViagens = 0;
 
+  List<Map<String, dynamic>> _listaVeiculos = [];
+  String? _veiculoSelecionadoId;
+
   @override
   void initState() {
     super.initState();
+    if (widget.veiculoEspecifico != null) {
+      _veiculoSelecionadoId = widget.veiculoEspecifico!['id']?.toString();
+    }
+    _carregarListaVeiculosParaFiltro();
+  }
+
+  Future<void> _carregarListaVeiculosParaFiltro() async {
+    try {
+      final res = await SUPABASE_CLIENT.from('veiculos').select('id, modelo, placa');
+      setState(() {
+        _listaVeiculos = List<Map<String, dynamic>>.from(res);
+      });
+    } catch (_) {}
     _carregarDadosDashboard();
   }
 
   Future<void> _carregarDadosDashboard() async {
+    setState(() => _carregando = true);
     try {
       // 1. Veículos
-      final resVeiculos = await supabase.from('veiculos').select('id');
+      final resVeiculos = await SUPABASE_CLIENT.from('veiculos').select('id');
       _totalVeiculos = (resVeiculos as List).length;
 
+      // Definir filtro por veículo se houver seleção
+      // Nota: Certifique-se de que nas suas tabelas (viagens, manutencoes, pneus, abastecimentos) existe a coluna 'veiculo_id'
+      
       // 2. Viagens e Fretes
-      final resViagens = await supabase.from('viagens').select('frete_total');
+      var queryViagens = SUPABASE_CLIENT.from('viagens').select('frete_total, veiculo_id');
+      if (_veiculoSelecionadoId != null) {
+        queryViagens = queryViagens.eq('veiculo_id', _veiculoSelecionadoId);
+      }
+      final resViagens = await queryViagens;
       _totalViagens = (resViagens as List).length;
       _totalFretes = (resViagens).fold(0.0, (soma, v) {
         final val = v['frete_total'];
@@ -3612,29 +3638,55 @@ class _TelaDashboardState extends State<TelaDashboard> {
       });
 
       // 3. Manutenções
-      final resManut = await supabase.from('manutencoes').select('custo');
+      var queryManut = SUPABASE_CLIENT.from('manutencoes').select('custo, veiculo_id');
+      if (_veiculoSelecionadoId != null) {
+        queryManut = queryManut.eq('veiculo_id', _veiculoSelecionadoId);
+      }
+      final resManut = await queryManut;
       _totalManutencoes = (resManut as List).fold(0.0, (soma, m) {
         final val = m['custo'];
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
       // 4. Pneus
-      final resPneus = await supabase.from('pneus').select('custo');
+      var queryPneus = SUPABASE_CLIENT.from('pneus').select('custo, veiculo_id');
+      if (_veiculoSelecionadoId != null) {
+        queryPneus = queryPneus.eq('veiculo_id', _veiculoSelecionadoId);
+      }
+      final resPneus = await queryPneus;
       _totalPneus = (resPneus as List).fold(0.0, (soma, p) {
         final val = p['custo'];
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
-      // 5. Combustível
+      // 5. Combustível (Tentamos na tabela 'abastecimentos' ou 'combustivel')
+      double totalComb = 0.0;
       try {
-        final resComb = await supabase.from('abastecimentos').select('valor_total');
-        _totalCombustivel = (resComb as List).fold(0.0, (soma, c) {
-          final val = c['valor_total'];
+        var queryComb = SUPABASE_CLIENT.from('abastecimentos').select('valor_total, valor, custo, veiculo_id');
+        if (_veiculoSelecionadoId != null) {
+          queryComb = queryComb.eq('veiculo_id', _veiculoSelecionadoId);
+        }
+        final resComb = await queryComb;
+        totalComb = (resComb as List).fold(0.0, (soma, c) {
+          final val = c['valor_total'] ?? c['valor'] ?? c['custo'];
           return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
         });
       } catch (_) {
-        _totalCombustivel = 0.0;
+        try {
+          var queryComb2 = SUPABASE_CLIENT.from('combustivel').select('valor_total, valor, custo, veiculo_id');
+          if (_veiculoSelecionadoId != null) {
+            queryComb2 = queryComb2.eq('veiculo_id', _veiculoSelecionadoId);
+          }
+          final resComb2 = await queryComb2;
+          totalComb = (resComb2 as List).fold(0.0, (soma, c) {
+            final val = c['valor_total'] ?? c['valor'] ?? c['custo'];
+            return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+          });
+        } catch (_) {
+          totalComb = 0.0;
+        }
       }
+      _totalCombustivel = totalComb;
 
       setState(() {
         _carregando = false;
@@ -3654,144 +3706,199 @@ class _TelaDashboardState extends State<TelaDashboard> {
     final double custoTotal = _totalManutencoes + _totalPneus + _totalCombustivel;
     final double lucroLiquido = _totalFretes - custoTotal;
 
+    String tituloAppBar = 'Dashboard Geral da Frota';
+    if (_veiculoSelecionadoId != null && _listaVeiculos.isNotEmpty) {
+      final vObj = _listaVeiculos.firstWhere(
+        (v) => v['id'].toString() == _veiculoSelecionadoId,
+        orElse: () => {},
+      );
+      if (vObj.isNotEmpty) {
+        tituloAppBar = 'Dashboard: ${vObj['modelo']} (${vObj['placa']})';
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard Geral da Frota'),
+        title: Text(tituloAppBar),
         backgroundColor: Colors.blueGrey.shade800,
         foregroundColor: Colors.white,
       ),
-      body: _carregando
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _carregarDadosDashboard,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CardIndicador(
-                          titulo: 'Faturamento',
-                          valor: 'R\$ ${_totalFretes.toStringAsFixed(2)}',
-                          cor: Colors.green,
-                          icone: Icons.trending_up,
-                        ),
+      body: Column(
+        children: [
+          // Barra de Filtro por Veículo
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.blueGrey.shade50,
+            child: Row(
+              children: [
+                const Icon(Icons.filter_list, color: Colors.blueGrey),
+                const SizedBox(width: 8),
+                const Text('Filtrar Veículo:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _veiculoSelecionadoId,
+                    hint: const Text('Todos os Veículos (Frota Completa)'),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('🌐 Todos os Veículos (Geral)'),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _CardIndicador(
-                          titulo: 'Custos Totais',
-                          valor: 'R\$ ${custoTotal.toStringAsFixed(2)}',
-                          cor: Colors.red,
-                          icone: Icons.trending_down,
-                        ),
-                      ),
+                      ..._listaVeiculos.map((v) {
+                        return DropdownMenuItem<String>(
+                          value: v['id'].toString(),
+                          child: Text('${v['modelo'] ?? 'Veículo'} - ${v['placa'] ?? ''}'),
+                        );
+                      }),
                     ],
+                    onChanged: (novoValor) {
+                      setState(() {
+                        _veiculoSelecionadoId = novoValor;
+                      });
+                      _carregarDadosDashboard();
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CardIndicador(
-                          titulo: 'Lucro Líquido',
-                          valor: 'R\$ ${lucroLiquido.toStringAsFixed(2)}',
-                          cor: lucroLiquido >= 0 ? Colors.indigo : Colors.red.shade900,
-                          icone: Icons.account_balance_wallet,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _CardIndicador(
-                          titulo: 'Frota / Viagens',
-                          valor: '$_totalVeiculos veíc. | $_totalViagens viag.',
-                          cor: Colors.blue,
-                          icone: Icons.local_shipping,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Distribuição de Custos da Frota',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: SizedBox(
-                        height: 220,
-                        child: custoTotal == 0
-                            ? const Center(child: Text('Sem custos registados para exibir gráfico.'))
-                            : PieChart(
-                                PieChartData(
-                                  sectionsSpace: 2,
-                                  centerSpaceRadius: 40,
-                                  sections: [
-                                    if (_totalCombustivel > 0)
-                                      PieChartSectionData(
-                                        color: Colors.orange,
-                                        value: _totalCombustivel,
-                                        title: 'Combustível',
-                                        radius: 50,
-                                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                                      ),
-                                    if (_totalManutencoes > 0)
-                                      PieChartSectionData(
-                                        color: Colors.redAccent,
-                                        value: _totalManutencoes,
-                                        title: 'Manutenção',
-                                        radius: 50,
-                                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                                      ),
-                                    if (_totalPneus > 0)
-                                      PieChartSectionData(
-                                        color: Colors.teal,
-                                        value: _totalPneus,
-                                        title: 'Pneus',
-                                        radius: 50,
-                                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Resumo Detalhado de Despesas',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    child: Column(
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _carregando
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _carregarDadosDashboard,
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
                       children: [
-                        ListTile(
-                          leading: const Icon(Icons.build, color: Colors.redAccent),
-                          title: const Text('Manutenções'),
-                          trailing: Text('R\$ ${_totalManutencoes.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _CardIndicador(
+                                titulo: 'Faturamento',
+                                valor: 'R\$ ${_totalFretes.toStringAsFixed(2)}',
+                                cor: Colors.green,
+                                icone: Icons.trending_up,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _CardIndicador(
+                                titulo: 'Custos Totais',
+                                valor: 'R\$ ${custoTotal.toStringAsFixed(2)}',
+                                cor: Colors.red,
+                                icone: Icons.trending_down,
+                              ),
+                            ),
+                          ],
                         ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.radio_button_checked, color: Colors.teal),
-                          title: const Text('Pneus'),
-                          trailing: Text('R\$ ${_totalPneus.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _CardIndicador(
+                                titulo: 'Lucro Líquido',
+                                valor: 'R\$ ${lucroLiquido.toStringAsFixed(2)}',
+                                cor: lucroLiquido >= 0 ? Colors.indigo : Colors.red.shade900,
+                                icone: Icons.account_balance_wallet,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _CardIndicador(
+                                titulo: 'Viagens Registadas',
+                                valor: '$_totalViagens viagens',
+                                cor: Colors.blue,
+                                icone: Icons.local_shipping,
+                              ),
+                            ),
+                          ],
                         ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.local_gas_station, color: Colors.orange),
-                          title: const Text('Combustível'),
-                          trailing: Text('R\$ ${_totalCombustivel.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Distribuição de Custos',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SizedBox(
+                              height: 220,
+                              child: custoTotal == 0
+                                  ? const Center(child: Text('Sem custos registados para este filtro.'))
+                                  : PieChart(
+                                      PieChartData(
+                                        sectionsSpace: 2,
+                                        centerSpaceRadius: 40,
+                                        sections: [
+                                          if (_totalCombustivel > 0)
+                                            PieChartSectionData(
+                                              color: Colors.orange,
+                                              value: _totalCombustivel,
+                                              title: 'Combustível',
+                                              radius: 50,
+                                              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                          if (_totalManutencoes > 0)
+                                            PieChartSectionData(
+                                              color: Colors.redAccent,
+                                              value: _totalManutencoes,
+                                              title: 'Manutenção',
+                                              radius: 50,
+                                              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                          if (_totalPneus > 0)
+                                            PieChartSectionData(
+                                              color: Colors.teal,
+                                              value: _totalPneus,
+                                              title: 'Pneus',
+                                              radius: 50,
+                                              titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Resumo Detalhado de Despesas',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.build, color: Colors.redAccent),
+                                title: const Text('Manutenções'),
+                                trailing: Text('R\$ ${_totalManutencoes.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: const Icon(Icons.radio_button_checked, color: Colors.teal),
+                                title: const Text('Pneus'),
+                                trailing: Text('R\$ ${_totalPneus.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: const Icon(Icons.local_gas_station, color: Colors.orange),
+                                title: const Text('Combustível'),
+                                trailing: Text('R\$ ${_totalCombustivel.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -3822,14 +3929,14 @@ class _CardIndicador extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(titulo, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
-                Icon(icone, color: cor, size: 20),
+                Text(titulo, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+                Icon(icone, color: cor, size: 18),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               valor,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cor),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: cor),
             ),
           ],
         ),
