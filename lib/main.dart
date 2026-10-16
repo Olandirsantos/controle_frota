@@ -3635,7 +3635,9 @@ class _TelaDashboardState extends State<TelaDashboard> {
 
   bool _filtrarPorData(Map<String, dynamic> item) {
     if (_mesSelecionado == null) return true;
-    final dataStr = item['data'] ?? item['created_at'] ?? item['data_viagem'] ?? item['data_abastecimento'] ?? item['data_lancamento'];
+    
+    // Procura por qualquer campo de data existente de forma segura
+    final dataStr = item['data'] ?? item['created_at'] ?? item['data_viagem'] ?? item['data_abastecimento'] ?? item['data_lancamento'] ?? item['data_manutencao'];
     if (dataStr == null) return true; 
 
     final data = DateTime.tryParse(dataStr.toString());
@@ -3990,7 +3992,7 @@ class _CardIndicador extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               valor,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, cor: cor),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: cor),
             ),
           ],
         ),
