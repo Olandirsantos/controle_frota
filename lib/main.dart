@@ -3596,9 +3596,8 @@ class _TelaDashboardState extends State<TelaDashboard> {
   List<Map<String, dynamic>> _listaVeiculos = [];
   String? _veiculoSelecionadoId;
   
-  // Controle do Filtro de Mês (null = Todos os meses)
   int? _mesSelecionado;
-  int _anoSelecionado = DateTime.now().year;
+  final int _anoSelecionado = DateTime.now().year;
 
   final List<Map<String, dynamic>> _meses = [
     {'valor': 1, 'nome': 'Janeiro'},
@@ -3634,22 +3633,27 @@ class _TelaDashboardState extends State<TelaDashboard> {
     _carregarDadosDashboard();
   }
 
-  // Função auxiliar para verificar se um registo está dentro do mês/ano selecionado
   bool _filtrarPorData(Map<String, dynamic> item) {
-    if (_mesSelecionado == null) return true; // Se escolheu "Todos os Meses", passa tudo
-    
-    // Procura por campos comuns de data nas tabelas
+    if (_mesSelecionado == null) return true;
     final dataStr = item['data'] ?? item['created_at'] ?? item['data_viagem'] ?? item['data_abastecimento'] ?? item['data_lancamento'];
-    
-    // Se o registo não tiver nenhuma data preenchida (comum em tabelas antigas de combustível), 
-    // permitimos que apareça para não ficar a zero incorretamente
     if (dataStr == null) return true; 
 
     final data = DateTime.tryParse(dataStr.toString());
-    if (data == null) return true; // Se a data for inválida, passa por segurança
+    if (data == null) return true; 
 
     return data.month == _mesSelecionado && data.year == _anoSelecionado;
   }
+
+  bool _filtrarVeiculoEData(Map<String, dynamic> item, String? veiculoIdLocal) {
+    if (veiculoIdLocal != null) {
+      final vIdRegisto = item['veiculo_id']?.toString() ?? item['id_veiculo']?.toString();
+      if (vIdRegisto != null && vIdRegisto != veiculoIdLocal) {
+        return false;
+      }
+    }
+    return _filtrarPorData(item);
+  }
+
   Future<void> _carregarDadosDashboard() async {
     setState(() => _carregando = true);
     try {
@@ -3660,70 +3664,54 @@ class _TelaDashboardState extends State<TelaDashboard> {
       _totalVeiculos = (resVeiculos as List).length;
 
       // 2. Viagens e Fretes
-      var queryViagens = supabase.from('viagens').select('frete_total, veiculo_id, data, created_at');
-      if (veiculoIdLocal != null) {
-        queryViagens = queryViagens.eq('veiculo_id', veiculoIdLocal as Object);
+      try {
+        final resViagens = await supabase.from('viagens').select();
+        final viagensFiltradas = (resViagens as List).where((v) => _filtrarVeiculoEData(v, veiculoIdLocal)).toList();
+        _totalViagens = viagensFiltradas.length;
+        _totalFretes = viagensFiltradas.fold(0.0, (soma, v) {
+          final val = v['frete_total'] ?? v['valor'] ?? v['valor_frete'];
+          return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+        });
+      } catch (_) {
+        _totalViagens = 0;
+        _totalFretes = 0.0;
       }
-      final resViagens = await queryViagens;
-      
-      final viagensFiltradas = (resViagens as List).where((v) => _filtrarPorData(v)).toList();
-      _totalViagens = viagensFiltradas.length;
-      _totalFretes = viagensFiltradas.fold(0.0, (soma, v) {
-        final val = v['frete_total'];
-        return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
-      });
 
       // 3. Manutenções
-      var queryManut = supabase.from('manutencoes').select('custo, veiculo_id, data, created_at');
-      if (veiculoIdLocal != null) {
-        queryManut = queryManut.eq('veiculo_id', veiculoIdLocal as Object);
+      try {
+        final resManut = await supabase.from('manutencoes').select();
+        final manutFiltradas = (resManut as List).where((m) => _filtrarVeiculoEData(m, veiculoIdLocal)).toList();
+        _totalManutencoes = manutFiltradas.fold(0.0, (soma, m) {
+          final val = m['custo'] ?? m['valor'] ?? m['valor_total'];
+          return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+        });
+      } catch (_) {
+        _totalManutencoes = 0.0;
       }
-      final resManut = await queryManut;
-      
-      final manutFiltradas = (resManut as List).where((m) => _filtrarPorData(m)).toList();
-      _totalManutencoes = manutFiltradas.fold(0.0, (soma, m) {
-        final val = m['custo'];
-        return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
-      });
 
       // 4. Pneus
-      var queryPneus = supabase.from('pneus').select('custo, veiculo_id, data, created_at');
-      if (veiculoIdLocal != null) {
-        queryPneus = queryPneus.eq('veiculo_id', veiculoIdLocal as Object);
+      try {
+        final resPneus = await supabase.from('pneus').select();
+        final pneusFiltrados = (resPneus as List).where((p) => _filtrarVeiculoEData(p, veiculoIdLocal)).toList();
+        _totalPneus = pneusFiltrados.fold(0.0, (soma, p) {
+          final val = p['custo'] ?? p['valor'] ?? p['valor_total'];
+          return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+        });
+      } catch (_) {
+        _totalPneus = 0.0;
       }
-      final resPneus = await queryPneus;
-      
-      final pneusFiltrados = (resPneus as List).where((p) => _filtrarPorData(p)).toList();
-      _totalPneus = pneusFiltrados.fold(0.0, (soma, p) {
-        final val = p['custo'];
-        return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
-      });
 
       // 5. Combustível
-      double totalComb = 0.0;
       try {
-        var queryComb = supabase.from('combustivel').select();
-        if (veiculoIdLocal != null) {
-          queryComb = queryComb.eq('veiculo_id', veiculoIdLocal as Object);
-        }
-        final resComb = await queryComb;
-        
-        final combFiltrados = (resComb as List).where((c) {
-          if (veiculoIdLocal != null) {
-            final vIdRegisto = c['veiculo_id']?.toString() ?? c['id_veiculo']?.toString();
-            if (vIdRegisto != null && vIdRegisto != veiculoIdLocal) return false;
-          }
-          return _filtrarPorData(c);
-        }).toList();
-
-        totalComb = combFiltrados.fold(0.0, (soma, c) {
+        final resComb = await supabase.from('combustivel').select();
+        final combFiltrados = (resComb as List).where((c) => _filtrarVeiculoEData(c, veiculoIdLocal)).toList();
+        _totalCombustivel = combFiltrados.fold(0.0, (soma, c) {
           final val = c['valor_total'] ?? c['valor'] ?? c['custo'] ?? c['preco_total'] ?? c['total'];
           return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
         });
       } catch (_) {
-        totalComb = 0.0;
+        _totalCombustivel = 0.0;
       }
-      _totalCombustivel = totalComb;
 
       setState(() {
         _carregando = false;
@@ -3762,13 +3750,11 @@ class _TelaDashboardState extends State<TelaDashboard> {
       ),
       body: Column(
         children: [
-          // Barra de Filtros (Veículo e Mês)
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.blueGrey.shade50,
             child: Column(
               children: [
-                // Filtro de Veículo
                 Row(
                   children: [
                     const Icon(Icons.directions_car, color: Colors.blueGrey, size: 20),
@@ -3799,7 +3785,6 @@ class _TelaDashboardState extends State<TelaDashboard> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Filtro de Mês
                 Row(
                   children: [
                     const Icon(Icons.calendar_month, color: Colors.blueGrey, size: 20),
@@ -4005,7 +3990,7 @@ class _CardIndicador extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               valor,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: cor),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, cor: cor),
             ),
           ],
         ),
