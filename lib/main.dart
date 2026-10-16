@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 // ignore: avoid_web_libraries_in_flutter
@@ -3574,8 +3575,6 @@ class _TelaCadastroPneuState extends State<TelaCadastroPneu> {
 // ----------------------------------------------------
 // TELA DE DASHBOARD FINANCEIRO E INDICADORES DA FROTA
 // ----------------------------------------------------
-import 'package:fl_chart/fl_chart.dart';
-
 class TelaDashboard extends StatefulWidget {
   const TelaDashboard({super.key});
 
@@ -3626,7 +3625,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
-      // 5. Combustível (se tabela existir, caso contrário 0)
+      // 5. Combustível
       try {
         final resComb = await supabase.from('abastecimentos').select('valor_total');
         _totalCombustivel = (resComb as List).fold(0.0, (soma, c) {
@@ -3668,7 +3667,6 @@ class _TelaDashboardState extends State<TelaDashboard> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Linha de Resumo Principal (Cards)
                   Row(
                     children: [
                       Expanded(
@@ -3713,8 +3711,6 @@ class _TelaDashboardState extends State<TelaDashboard> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
-                  // Secção de Gráfico de Custos
                   const Text(
                     'Distribuição de Custos da Frota',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -3765,8 +3761,6 @@ class _TelaDashboardState extends State<TelaDashboard> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // Detalhe por Categoria
                   const Text(
                     'Resumo Detalhado de Despesas',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
