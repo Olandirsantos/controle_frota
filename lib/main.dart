@@ -3618,14 +3618,16 @@ class _TelaDashboardState extends State<TelaDashboard> {
   Future<void> _carregarDadosDashboard() async {
     setState(() => _carregando = true);
     try {
+      final veiculoIdLocal = _veiculoSelecionadoId;
+
       // 1. Veículos
       final resVeiculos = await supabase.from('veiculos').select('id');
       _totalVeiculos = (resVeiculos as List).length;
 
       // 2. Viagens e Fretes
       var queryViagens = supabase.from('viagens').select('frete_total, veiculo_id');
-      if (_veiculoSelecionadoId != null) {
-        queryViagens = queryViagens.eq('veiculo_id', _veiculoSelecionadoId);
+      if (veiculoIdLocal != null) {
+        queryViagens = queryViagens.eq('veiculo_id', veiculoIdLocal as Object);
       }
       final resViagens = await queryViagens;
       _totalViagens = (resViagens as List).length;
@@ -3636,8 +3638,8 @@ class _TelaDashboardState extends State<TelaDashboard> {
 
       // 3. Manutenções
       var queryManut = supabase.from('manutencoes').select('custo, veiculo_id');
-      if (_veiculoSelecionadoId != null) {
-        queryManut = queryManut.eq('veiculo_id', _veiculoSelecionadoId);
+      if (veiculoIdLocal != null) {
+        queryManut = queryManut.eq('veiculo_id', veiculoIdLocal as Object);
       }
       final resManut = await queryManut;
       _totalManutencoes = (resManut as List).fold(0.0, (soma, m) {
@@ -3647,8 +3649,8 @@ class _TelaDashboardState extends State<TelaDashboard> {
 
       // 4. Pneus
       var queryPneus = supabase.from('pneus').select('custo, veiculo_id');
-      if (_veiculoSelecionadoId != null) {
-        queryPneus = queryPneus.eq('veiculo_id', _veiculoSelecionadoId);
+      if (veiculoIdLocal != null) {
+        queryPneus = queryPneus.eq('veiculo_id', veiculoIdLocal as Object);
       }
       final resPneus = await queryPneus;
       _totalPneus = (resPneus as List).fold(0.0, (soma, p) {
@@ -3660,8 +3662,8 @@ class _TelaDashboardState extends State<TelaDashboard> {
       double totalComb = 0.0;
       try {
         var queryComb = supabase.from('abastecimentos').select('valor_total, valor, custo, veiculo_id');
-        if (_veiculoSelecionadoId != null) {
-          queryComb = queryComb.eq('veiculo_id', _veiculoSelecionadoId);
+        if (veiculoIdLocal != null) {
+          queryComb = queryComb.eq('veiculo_id', veiculoIdLocal as Object);
         }
         final resComb = await queryComb;
         totalComb = (resComb as List).fold(0.0, (soma, c) {
@@ -3671,8 +3673,8 @@ class _TelaDashboardState extends State<TelaDashboard> {
       } catch (_) {
         try {
           var queryComb2 = supabase.from('combustivel').select('valor_total, valor, custo, veiculo_id');
-          if (_veiculoSelecionadoId != null) {
-            queryComb2 = queryComb2.eq('veiculo_id', _veiculoSelecionadoId);
+          if (veiculoIdLocal != null) {
+            queryComb2 = queryComb2.eq('veiculo_id', veiculoIdLocal as Object);
           }
           final resComb2 = await queryComb2;
           totalComb = (resComb2 as List).fold(0.0, (soma, c) {
