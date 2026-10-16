@@ -3605,6 +3605,16 @@ class _TelaDashboardState extends State<TelaDashboard> {
     _carregarListaVeiculosParaFiltro();
   }
 
+  Future<void> _carregarListaVeiculosParaFiltro() async {
+    try {
+      final res = await supabase.from('veiculos').select('id, modelo, placa');
+      setState(() {
+        _listaVeiculos = List<Map<String, dynamic>>.from(res);
+      });
+    } catch (_) {}
+    _carregarDadosDashboard();
+  }
+
   Future<void> _carregarDadosDashboard() async {
     setState(() => _carregando = true);
     try {
@@ -3648,7 +3658,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
-      // 5. Combustível (Apanha todos os dados da tabela 'combustivel' com segurança)
+      // 5. Combustível (Apanha com segurança da tabela 'combustivel')
       double totalComb = 0.0;
       try {
         var queryComb = supabase.from('combustivel').select();
@@ -3657,14 +3667,12 @@ class _TelaDashboardState extends State<TelaDashboard> {
         }
         final resComb = await queryComb;
         totalComb = (resComb as List).fold(0.0, (soma, c) {
-          // Se houver filtro por veículo e a chave for diferente, valida por segurança
           if (veiculoIdLocal != null) {
             final vIdRegisto = c['veiculo_id']?.toString() ?? c['id_veiculo']?.toString();
             if (vIdRegisto != null && vIdRegisto != veiculoIdLocal) {
               return soma;
             }
           }
-          // Procura o valor monetário em qualquer variação possível de nome de coluna
           final val = c['valor_total'] ?? c['valor'] ?? c['custo'] ?? c['preco_total'] ?? c['total'];
           return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
         });
@@ -3902,6 +3910,7 @@ class _CardIndicador extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    totalCombustivel: ...; // Mantido encapsulado nas propriedades estruturais
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
