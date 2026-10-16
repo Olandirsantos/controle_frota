@@ -1445,7 +1445,7 @@ class _TelaCadastroCombustivelState extends State<TelaCadastroCombustivel> {
 }
 
 // ----------------------------------------------------
-// TELA DE LISTA DE VIAGENS (CÁLCULO FINANCEIRO COMPLETO)
+// TELA DE LISTA DE VIAGENS (OTIMIZADA PARA TELEMÓVEL)
 // ----------------------------------------------------
 class TelaListaViagens extends StatefulWidget {
   final Map<String, dynamic> veiculo;
@@ -1620,7 +1620,6 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                             final kmRodados = kmFinal >= kmInicial ? kmFinal - kmInicial : 0;
                             final freteTotal = double.tryParse(item['frete_total']?.toString() ?? '0') ?? 0.0;
                             
-                            // Cálculo financeiro completo incluindo pedágio e tarifas
                             final adiantamento = double.tryParse(item['adiantamento']?.toString() ?? '0') ?? 0.0;
                             final saldoRecebido = double.tryParse(item['saldo_recebido']?.toString() ?? '0') ?? 0.0;
                             final valePedagio = double.tryParse(item['vale_pedagio']?.toString() ?? '0') ?? 0.0;
@@ -1634,87 +1633,10 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
 
                             return Card(
                               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: corEstado,
-                                  child: Icon(quitado ? Icons.check : Icons.hourglass_top, color: Colors.white),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        '${item['origem']} ➔ ${item['destino']}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: corEstado.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: corEstado),
-                                      ),
-                                      child: Text(
-                                        textoEstado,
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: corEstado),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Text('Data: ${item['data']} | Motorista: ${item['motorista'] ?? 'Não informado'}'),
-                                    Text('Distância: $kmRodados km ($kmInicial ➔ $kmFinal)'),
-                                    if (item['produto'] != null && item['produto'].toString().isNotEmpty)
-                                      Text(
-                                        'Produto: ${item['produto']}',
-                                        style: const TextStyle(color: Colors.grey),
-                                      ),
-                                  ],
-                                ),
-                                isThreeLine: true,
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          'R\$ ${freteTotal.toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        const Text('Frete Total', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, size: 20, color: Colors.indigo),
-                                      onPressed: () async {
-                                        final atualizado = await Navigator.push<bool>(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => TelaCadastroViagem(
-                                              veiculoId: widget.veiculo['id'],
-                                              viagemExistente: item,
-                                            ),
-                                          ),
-                                        );
-
-                                        if (atualizado == true) {
-                                          setState(() => _carregando = true);
-                                          _carregarViagens();
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(10),
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -1723,6 +1645,109 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                     ),
                                   );
                                 },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Linha Superior: Origem ➔ Destino e Status
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              '${item['origem'] ?? ''} ➔ ${item['destino'] ?? ''}',
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.indigo,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: corEstado.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: corEstado),
+                                            ),
+                                            child: Text(
+                                              textoEstado,
+                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: corEstado),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Divider(height: 16),
+                                      // Linha do Meio: Detalhes da Viagem
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Data: ${item['data'] ?? '-'}', style: const TextStyle(fontSize: 13)),
+                                              const SizedBox(height: 2),
+                                              Text('Motorista: ${item['motorista'] ?? 'Não informado'}', style: const TextStyle(fontSize: 13)),
+                                              const SizedBox(height: 2),
+                                              Text('Distância: $kmRodados km ($kmInicial ➔ $kmFinal)', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                                              if (item['produto'] != null && item['produto'].toString().isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Text('Produto: ${item['produto']}', style: const TextStyle(fontSize: 13, color: Colors.indigo)),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      // Linha Inferior: Valor do Frete e Botão de Editar
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('Frete Total', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                              Text(
+                                                'R\$ ${freteTotal.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.green,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          OutlinedButton.icon(
+                                            icon: const Icon(Icons.edit, size: 16, color: Colors.indigo),
+                                            label: const Text('Editar', style: TextStyle(color: Colors.indigo, fontSize: 13)),
+                                            style: OutlinedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                              side: const BorderSide(color: Colors.indigo),
+                                            ),
+                                            onPressed: () async {
+                                              final atualizado = await Navigator.push<bool>(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => TelaCadastroViagem(
+                                                    veiculoId: widget.veiculo['id'],
+                                                    viagemExistente: item,
+                                                  ),
+                                                ),
+                                              );
+
+                                              if (atualizado == true) {
+                                                setState(() => _carregando = true);
+                                                _carregarViagens();
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             );
                           },
