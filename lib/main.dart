@@ -3910,7 +3910,6 @@ class _CardIndicador extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    totalCombustivel: ...; // Mantido encapsulado nas propriedades estruturais
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
