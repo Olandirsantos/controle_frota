@@ -3605,16 +3605,6 @@ class _TelaDashboardState extends State<TelaDashboard> {
     _carregarListaVeiculosParaFiltro();
   }
 
-  Future<void> _carregarListaVeiculosParaFiltro() async {
-    try {
-      final res = await supabase.from('veiculos').select('id, modelo, placa');
-      setState(() {
-        _listaVeiculos = List<Map<String, dynamic>>.from(res);
-      });
-    } catch (_) {}
-    _carregarDadosDashboard();
-  }
-
   Future<void> _carregarDadosDashboard() async {
     setState(() => _carregando = true);
     try {
@@ -3658,32 +3648,28 @@ class _TelaDashboardState extends State<TelaDashboard> {
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
-      // 5. Combustível
+      // 5. Combustível (Apanha todos os dados da tabela 'combustivel' com segurança)
       double totalComb = 0.0;
       try {
-        var queryComb = supabase.from('abastecimentos').select('valor_total, valor, custo, veiculo_id');
+        var queryComb = supabase.from('combustivel').select();
         if (veiculoIdLocal != null) {
           queryComb = queryComb.eq('veiculo_id', veiculoIdLocal as Object);
         }
         final resComb = await queryComb;
         totalComb = (resComb as List).fold(0.0, (soma, c) {
-          final val = c['valor_total'] ?? c['valor'] ?? c['custo'];
+          // Se houver filtro por veículo e a chave for diferente, valida por segurança
+          if (veiculoIdLocal != null) {
+            final vIdRegisto = c['veiculo_id']?.toString() ?? c['id_veiculo']?.toString();
+            if (vIdRegisto != null && vIdRegisto != veiculoIdLocal) {
+              return soma;
+            }
+          }
+          // Procura o valor monetário em qualquer variação possível de nome de coluna
+          final val = c['valor_total'] ?? c['valor'] ?? c['custo'] ?? c['preco_total'] ?? c['total'];
           return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
         });
       } catch (_) {
-        try {
-          var queryComb2 = supabase.from('combustivel').select('valor_total, valor, custo, veiculo_id');
-          if (veiculoIdLocal != null) {
-            queryComb2 = queryComb2.eq('veiculo_id', veiculoIdLocal as Object);
-          }
-          final resComb2 = await queryComb2;
-          totalComb = (resComb2 as List).fold(0.0, (soma, c) {
-            final val = c['valor_total'] ?? c['valor'] ?? c['custo'];
-            return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
-          });
-        } catch (_) {
-          totalComb = 0.0;
-        }
+        totalComb = 0.0;
       }
       _totalCombustivel = totalComb;
 
