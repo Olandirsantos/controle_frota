@@ -3595,6 +3595,25 @@ class _TelaDashboardState extends State<TelaDashboard> {
 
   List<Map<String, dynamic>> _listaVeiculos = [];
   String? _veiculoSelecionadoId;
+  
+  // Controle do Filtro de Mês (null = Todos os meses)
+  int? _mesSelecionado;
+  int _anoSelecionado = DateTime.now().year;
+
+  final List<Map<String, dynamic>> _meses = [
+    {'valor': 1, 'nome': 'Janeiro'},
+    {'valor': 2, 'nome': 'Fevereiro'},
+    {'valor': 3, 'nome': 'Março'},
+    {'valor': 4, 'nome': 'Abril'},
+    {'valor': 5, 'nome': 'Maio'},
+    {'valor': 6, 'nome': 'Junho'},
+    {'valor': 7, 'nome': 'Julho'},
+    {'valor': 8, 'nome': 'Agosto'},
+    {'valor': 9, 'nome': 'Setembro'},
+    {'valor': 10, 'nome': 'Outubro'},
+    {'valor': 11, 'nome': 'Novembro'},
+    {'valor': 12, 'nome': 'Dezembro'},
+  ];
 
   @override
   void initState() {
@@ -3615,6 +3634,20 @@ class _TelaDashboardState extends State<TelaDashboard> {
     _carregarDadosDashboard();
   }
 
+  // Função auxiliar para verificar se um registo está dentro do mês/ano selecionado
+  bool _filtrarPorData(Map<String, dynamic> item) {
+    if (_mesSelecionado == null) return true; // Se não escolheu mês, passa todos
+    
+    // Procura por campos comuns de data nas tabelas
+    final dataStr = item['data'] ?? item['created_at'] ?? item['data_viagem'] ?? item['data_abastecimento'];
+    if (dataStr == null) return false;
+
+    final data = DateTime.tryParse(dataStr.toString());
+    if (data == null) return false;
+
+    return data.month == _mesSelecionado && data.year == _anoSelecionado;
+  }
+
   Future<void> _carregarDadosDashboard() async {
     setState(() => _carregando = true);
     try {
@@ -3625,40 +3658,46 @@ class _TelaDashboardState extends State<TelaDashboard> {
       _totalVeiculos = (resVeiculos as List).length;
 
       // 2. Viagens e Fretes
-      var queryViagens = supabase.from('viagens').select('frete_total, veiculo_id');
+      var queryViagens = supabase.from('viagens').select('frete_total, veiculo_id, data, created_at');
       if (veiculoIdLocal != null) {
         queryViagens = queryViagens.eq('veiculo_id', veiculoIdLocal as Object);
       }
       final resViagens = await queryViagens;
-      _totalViagens = (resViagens as List).length;
-      _totalFretes = (resViagens).fold(0.0, (soma, v) {
+      
+      final viagensFiltradas = (resViagens as List).where((v) => _filtrarPorData(v)).toList();
+      _totalViagens = viagensFiltradas.length;
+      _totalFretes = viagensFiltradas.fold(0.0, (soma, v) {
         final val = v['frete_total'];
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
       // 3. Manutenções
-      var queryManut = supabase.from('manutencoes').select('custo, veiculo_id');
+      var queryManut = supabase.from('manutencoes').select('custo, veiculo_id, data, created_at');
       if (veiculoIdLocal != null) {
         queryManut = queryManut.eq('veiculo_id', veiculoIdLocal as Object);
       }
       final resManut = await queryManut;
-      _totalManutencoes = (resManut as List).fold(0.0, (soma, m) {
+      
+      final manutFiltradas = (resManut as List).where((m) => _filtrarPorData(m)).toList();
+      _totalManutencoes = manutFiltradas.fold(0.0, (soma, m) {
         final val = m['custo'];
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
       // 4. Pneus
-      var queryPneus = supabase.from('pneus').select('custo, veiculo_id');
+      var queryPneus = supabase.from('pneus').select('custo, veiculo_id, data, created_at');
       if (veiculoIdLocal != null) {
         queryPneus = queryPneus.eq('veiculo_id', veiculoIdLocal as Object);
       }
       final resPneus = await queryPneus;
-      _totalPneus = (resPneus as List).fold(0.0, (soma, p) {
+      
+      final pneusFiltrados = (resPneus as List).where((p) => _filtrarPorData(p)).toList();
+      _totalPneus = pneusFiltrados.fold(0.0, (soma, p) {
         final val = p['custo'];
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
-      // 5. Combustível (Apanha com segurança da tabela 'combustivel')
+      // 5. Combustível
       double totalComb = 0.0;
       try {
         var queryComb = supabase.from('combustivel').select();
@@ -3666,13 +3705,16 @@ class _TelaDashboardState extends State<TelaDashboard> {
           queryComb = queryComb.eq('veiculo_id', veiculoIdLocal as Object);
         }
         final resComb = await queryComb;
-        totalComb = (resComb as List).fold(0.0, (soma, c) {
+        
+        final combFiltrados = (resComb as List).where((c) {
           if (veiculoIdLocal != null) {
             final vIdRegisto = c['veiculo_id']?.toString() ?? c['id_veiculo']?.toString();
-            if (vIdRegisto != null && vIdRegisto != veiculoIdLocal) {
-              return soma;
-            }
+            if (vIdRegisto != null && vIdRegisto != veiculoIdLocal) return false;
           }
+          return _filtrarPorData(c);
+        }).toList();
+
+        totalComb = combFiltrados.fold(0.0, (soma, c) {
           final val = c['valor_total'] ?? c['valor'] ?? c['custo'] ?? c['preco_total'] ?? c['total'];
           return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
         });
@@ -3699,7 +3741,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
     final double custoTotal = _totalManutencoes + _totalPneus + _totalCombustivel;
     final double lucroLiquido = _totalFretes - custoTotal;
 
-    String tituloAppBar = 'Dashboard Geral da Frota';
+    String tituloAppBar = 'Dashboard Financeiro';
     if (_veiculoSelecionadoId != null && _listaVeiculos.isNotEmpty) {
       final vObj = _listaVeiculos.firstWhere(
         (v) => v['id'].toString() == _veiculoSelecionadoId,
@@ -3718,39 +3760,72 @@ class _TelaDashboardState extends State<TelaDashboard> {
       ),
       body: Column(
         children: [
+          // Barra de Filtros (Veículo e Mês)
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.blueGrey.shade50,
-            child: Row(
+            child: Column(
               children: [
-                const Icon(Icons.filter_list, color: Colors.blueGrey),
-                const SizedBox(width: 8),
-                const Text('Filtrar Veículo:', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _veiculoSelecionadoId,
-                    hint: const Text('Todos os Veículos (Frota Completa)'),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('🌐 Todos os Veículos (Geral)'),
+                // Filtro de Veículo
+                Row(
+                  children: [
+                    const Icon(Icons.directions_car, color: Colors.blueGrey, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: _veiculoSelecionadoId,
+                        hint: const Text('Todos os Veículos (Frota Completa)'),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('🌐 Todos os Veículos (Geral)'),
+                          ),
+                          ..._listaVeiculos.map((v) {
+                            return DropdownMenuItem<String>(
+                              value: v['id'].toString(),
+                              child: Text('${v['modelo'] ?? 'Veículo'} - ${v['placa'] ?? ''}'),
+                            );
+                          }),
+                        ],
+                        onChanged: (novoValor) {
+                          setState(() => _veiculoSelecionadoId = novoValor);
+                          _carregarDadosDashboard();
+                        },
                       ),
-                      ..._listaVeiculos.map((v) {
-                        return DropdownMenuItem<String>(
-                          value: v['id'].toString(),
-                          child: Text('${v['modelo'] ?? 'Veículo'} - ${v['placa'] ?? ''}'),
-                        );
-                      }),
-                    ],
-                    onChanged: (novoValor) {
-                      setState(() {
-                        _veiculoSelecionadoId = novoValor;
-                      });
-                      _carregarDadosDashboard();
-                    },
-                  ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Filtro de Mês
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_month, color: Colors.blueGrey, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButton<int?>(
+                        isExpanded: true,
+                        value: _mesSelecionado,
+                        hint: const Text('Todos os Meses (Ano Inteiro)'),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('📅 Todos os Meses (Geral)'),
+                          ),
+                          ..._meses.map((m) {
+                            return DropdownMenuItem<int?>(
+                              value: m['valor'] as int,
+                              child: Text('${m['nome']} / $_anoSelecionado'),
+                            );
+                          }),
+                        ],
+                        onChanged: (novoMes) {
+                          setState(() => _mesSelecionado = novoMes);
+                          _carregarDadosDashboard();
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -3820,7 +3895,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
                             child: SizedBox(
                               height: 220,
                               child: custoTotal == 0
-                                  ? const Center(child: Text('Sem custos registados para este filtro.'))
+                                  ? const Center(child: Text('Sem custos registados para este período.'))
                                   : PieChart(
                                       PieChartData(
                                         sectionsSpace: 2,
