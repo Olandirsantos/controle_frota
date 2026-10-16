@@ -99,6 +99,19 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          // BOTÃO DO DASHBOARD ADICIONADO AQUI
+          IconButton(
+            icon: const Icon(Icons.bar_chart),
+            tooltip: 'Dashboard Financeiro',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TelaDashboard(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -3552,6 +3565,279 @@ class _TelaCadastroPneuState extends State<TelaCadastroPneu> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------
+// TELA DE DASHBOARD FINANCEIRO E INDICADORES DA FROTA
+// ----------------------------------------------------
+import 'package:fl_chart/fl_chart.dart';
+
+class TelaDashboard extends StatefulWidget {
+  const TelaDashboard({super.key});
+
+  @override
+  State<TelaDashboard> createState() => _TelaDashboardState();
+}
+
+class _TelaDashboardState extends State<TelaDashboard> {
+  bool _carregando = true;
+  double _totalFretes = 0.0;
+  double _totalManutencoes = 0.0;
+  double _totalCombustivel = 0.0;
+  double _totalPneus = 0.0;
+  int _totalVeiculos = 0;
+  int _totalViagens = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarDadosDashboard();
+  }
+
+  Future<void> _carregarDadosDashboard() async {
+    try {
+      // 1. Veículos
+      final resVeiculos = await supabase.from('veiculos').select('id');
+      _totalVeiculos = (resVeiculos as List).length;
+
+      // 2. Viagens e Fretes
+      final resViagens = await supabase.from('viagens').select('frete_total');
+      _totalViagens = (resViagens as List).length;
+      _totalFretes = (resViagens).fold(0.0, (soma, v) {
+        final val = v['frete_total'];
+        return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+      });
+
+      // 3. Manutenções
+      final resManut = await supabase.from('manutencoes').select('custo');
+      _totalManutencoes = (resManut as List).fold(0.0, (soma, m) {
+        final val = m['custo'];
+        return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+      });
+
+      // 4. Pneus
+      final resPneus = await supabase.from('pneus').select('custo');
+      _totalPneus = (resPneus as List).fold(0.0, (soma, p) {
+        final val = p['custo'];
+        return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+      });
+
+      // 5. Combustível (se tabela existir, caso contrário 0)
+      try {
+        final resComb = await supabase.from('abastecimentos').select('valor_total');
+        _totalCombustivel = (resComb as List).fold(0.0, (soma, c) {
+          final val = c['valor_total'];
+          return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
+        });
+      } catch (_) {
+        _totalCombustivel = 0.0;
+      }
+
+      setState(() {
+        _carregando = false;
+      });
+    } catch (e) {
+      setState(() => _carregando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar dados do dashboard: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double custoTotal = _totalManutencoes + _totalPneus + _totalCombustivel;
+    final double lucroLiquido = _totalFretes - custoTotal;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Dashboard Geral da Frota'),
+        backgroundColor: Colors.blueGrey.shade800,
+        foregroundColor: Colors.white,
+      ),
+      body: _carregando
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _carregarDadosDashboard,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Linha de Resumo Principal (Cards)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CardIndicador(
+                          titulo: 'Faturamento',
+                          valor: 'R\$ ${_totalFretes.toStringAsFixed(2)}',
+                          cor: Colors.green,
+                          icone: Icons.trending_up,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _CardIndicador(
+                          titulo: 'Custos Totais',
+                          valor: 'R\$ ${custoTotal.toStringAsFixed(2)}',
+                          cor: Colors.red,
+                          icone: Icons.trending_down,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CardIndicador(
+                          titulo: 'Lucro Líquido',
+                          valor: 'R\$ ${lucroLiquido.toStringAsFixed(2)}',
+                          cor: lucroLiquido >= 0 ? Colors.indigo : Colors.red.shade900,
+                          icone: Icons.account_balance_wallet,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _CardIndicador(
+                          titulo: 'Frota / Viagens',
+                          valor: '$_totalVeiculos veíc. | $_totalViagens viag.',
+                          cor: Colors.blue,
+                          icone: Icons.local_shipping,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Secção de Gráfico de Custos
+                  const Text(
+                    'Distribuição de Custos da Frota',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: SizedBox(
+                        height: 220,
+                        child: custoTotal == 0
+                            ? const Center(child: Text('Sem custos registados para exibir gráfico.'))
+                            : PieChart(
+                                PieChartData(
+                                  sectionsSpace: 2,
+                                  centerSpaceRadius: 40,
+                                  sections: [
+                                    if (_totalCombustivel > 0)
+                                      PieChartSectionData(
+                                        color: Colors.orange,
+                                        value: _totalCombustivel,
+                                        title: 'Combustível',
+                                        radius: 50,
+                                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    if (_totalManutencoes > 0)
+                                      PieChartSectionData(
+                                        color: Colors.redAccent,
+                                        value: _totalManutencoes,
+                                        title: 'Manutenção',
+                                        radius: 50,
+                                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    if (_totalPneus > 0)
+                                      PieChartSectionData(
+                                        color: Colors.teal,
+                                        value: _totalPneus,
+                                        title: 'Pneus',
+                                        radius: 50,
+                                        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Detalhe por Categoria
+                  const Text(
+                    'Resumo Detalhado de Despesas',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.build, color: Colors.redAccent),
+                          title: const Text('Manutenções'),
+                          trailing: Text('R\$ ${_totalManutencoes.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.radio_button_checked, color: Colors.teal),
+                          title: const Text('Pneus'),
+                          trailing: Text('R\$ ${_totalPneus.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.local_gas_station, color: Colors.orange),
+                          title: const Text('Combustível'),
+                          trailing: Text('R\$ ${_totalCombustivel.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class _CardIndicador extends StatelessWidget {
+  final String titulo;
+  final String valor;
+  final Color cor;
+  final IconData icone;
+
+  const _CardIndicador({
+    required this.titulo,
+    required this.valor,
+    required this.cor,
+    required this.icone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(titulo, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
+                Icon(icone, color: cor, size: 20),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              valor,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cor),
+            ),
+          ],
         ),
       ),
     );
