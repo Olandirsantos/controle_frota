@@ -3636,18 +3636,20 @@ class _TelaDashboardState extends State<TelaDashboard> {
 
   // Função auxiliar para verificar se um registo está dentro do mês/ano selecionado
   bool _filtrarPorData(Map<String, dynamic> item) {
-    if (_mesSelecionado == null) return true; // Se não escolheu mês, passa todos
+    if (_mesSelecionado == null) return true; // Se escolheu "Todos os Meses", passa tudo
     
     // Procura por campos comuns de data nas tabelas
-    final dataStr = item['data'] ?? item['created_at'] ?? item['data_viagem'] ?? item['data_abastecimento'];
-    if (dataStr == null) return false;
+    final dataStr = item['data'] ?? item['created_at'] ?? item['data_viagem'] ?? item['data_abastecimento'] ?? item['data_lancamento'];
+    
+    // Se o registo não tiver nenhuma data preenchida (comum em tabelas antigas de combustível), 
+    // permitimos que apareça para não ficar a zero incorretamente
+    if (dataStr == null) return true; 
 
     final data = DateTime.tryParse(dataStr.toString());
-    if (data == null) return false;
+    if (data == null) return true; // Se a data for inválida, passa por segurança
 
     return data.month == _mesSelecionado && data.year == _anoSelecionado;
   }
-
   Future<void> _carregarDadosDashboard() async {
     setState(() => _carregando = true);
     try {
