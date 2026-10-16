@@ -3576,7 +3576,7 @@ class _TelaCadastroPneuState extends State<TelaCadastroPneu> {
 // TELA DE DASHBOARD FINANCEIRO E INDICADORES DA FROTA
 // ----------------------------------------------------
 class TelaDashboard extends StatefulWidget {
-  final Map<String, dynamic>? veiculoEspecifico; // Opcional: se vier preenchido, filtra só para este veículo
+  final Map<String, dynamic>? veiculoEspecifico;
 
   const TelaDashboard({super.key, this.veiculoEspecifico});
 
@@ -3607,7 +3607,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
 
   Future<void> _carregarListaVeiculosParaFiltro() async {
     try {
-      final res = await SUPABASE_CLIENT.from('veiculos').select('id, modelo, placa');
+      final res = await supabase.from('veiculos').select('id, modelo, placa');
       setState(() {
         _listaVeiculos = List<Map<String, dynamic>>.from(res);
       });
@@ -3619,14 +3619,11 @@ class _TelaDashboardState extends State<TelaDashboard> {
     setState(() => _carregando = true);
     try {
       // 1. Veículos
-      final resVeiculos = await SUPABASE_CLIENT.from('veiculos').select('id');
+      final resVeiculos = await supabase.from('veiculos').select('id');
       _totalVeiculos = (resVeiculos as List).length;
 
-      // Definir filtro por veículo se houver seleção
-      // Nota: Certifique-se de que nas suas tabelas (viagens, manutencoes, pneus, abastecimentos) existe a coluna 'veiculo_id'
-      
       // 2. Viagens e Fretes
-      var queryViagens = SUPABASE_CLIENT.from('viagens').select('frete_total, veiculo_id');
+      var queryViagens = supabase.from('viagens').select('frete_total, veiculo_id');
       if (_veiculoSelecionadoId != null) {
         queryViagens = queryViagens.eq('veiculo_id', _veiculoSelecionadoId);
       }
@@ -3638,7 +3635,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
       });
 
       // 3. Manutenções
-      var queryManut = SUPABASE_CLIENT.from('manutencoes').select('custo, veiculo_id');
+      var queryManut = supabase.from('manutencoes').select('custo, veiculo_id');
       if (_veiculoSelecionadoId != null) {
         queryManut = queryManut.eq('veiculo_id', _veiculoSelecionadoId);
       }
@@ -3649,7 +3646,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
       });
 
       // 4. Pneus
-      var queryPneus = SUPABASE_CLIENT.from('pneus').select('custo, veiculo_id');
+      var queryPneus = supabase.from('pneus').select('custo, veiculo_id');
       if (_veiculoSelecionadoId != null) {
         queryPneus = queryPneus.eq('veiculo_id', _veiculoSelecionadoId);
       }
@@ -3659,10 +3656,10 @@ class _TelaDashboardState extends State<TelaDashboard> {
         return soma + (val is num ? val.toDouble() : double.tryParse(val?.toString().replaceAll(',', '.') ?? '0') ?? 0.0);
       });
 
-      // 5. Combustível (Tentamos na tabela 'abastecimentos' ou 'combustivel')
+      // 5. Combustível
       double totalComb = 0.0;
       try {
-        var queryComb = SUPABASE_CLIENT.from('abastecimentos').select('valor_total, valor, custo, veiculo_id');
+        var queryComb = supabase.from('abastecimentos').select('valor_total, valor, custo, veiculo_id');
         if (_veiculoSelecionadoId != null) {
           queryComb = queryComb.eq('veiculo_id', _veiculoSelecionadoId);
         }
@@ -3673,7 +3670,7 @@ class _TelaDashboardState extends State<TelaDashboard> {
         });
       } catch (_) {
         try {
-          var queryComb2 = SUPABASE_CLIENT.from('combustivel').select('valor_total, valor, custo, veiculo_id');
+          var queryComb2 = supabase.from('combustivel').select('valor_total, valor, custo, veiculo_id');
           if (_veiculoSelecionadoId != null) {
             queryComb2 = queryComb2.eq('veiculo_id', _veiculoSelecionadoId);
           }
@@ -3725,7 +3722,6 @@ class _TelaDashboardState extends State<TelaDashboard> {
       ),
       body: Column(
         children: [
-          // Barra de Filtro por Veículo
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.blueGrey.shade50,
