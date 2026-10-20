@@ -2988,8 +2988,7 @@ class DetalhesViagemAbasScreen extends StatelessWidget {
               ),
             ),
 
-            // ==========================================
-// ABA 3: SALDO (COM DESCONTO COMPLETO)
+            // ABA 3: SALDO (COM DESCONTO COMPLETO)
 // ==========================================
 Padding(
   padding: const EdgeInsets.all(16.0),
@@ -2999,36 +2998,104 @@ Padding(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Fechamento de Saldo', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
-            const Divider(height: 32),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Frete Total:', style: TextStyle(fontSize: 15)), Text('R\$ ${freteTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))]),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Adiantamento:', style: TextStyle(fontSize: 15)), Text('R\$ ${adiantamento.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, color: Colors.red))]),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Saldo Recebido:', style: TextStyle(fontSize: 15)), Text('R\$ ${saldoRecebido.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, color: Colors.blue))]),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Vale Pedágio:', style: TextStyle(fontSize: 15)), Text('R\$ ${valePedagio.toStringAsFixed(2)}', style: TextStyle(fontSize: 15, color: Colors.amber.shade800))]),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('(-) Tarifas:', style: TextStyle(fontSize: 15)), Text('R\$ ${tarifas.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, color: Colors.purple))]),
-            const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Builder(
+          builder: (context) {
+            // Recalcula o saldo restante pendente de forma exata na renderização
+            final double restantePendenteCalculado =
+                freteTotal - adiantamento - saldoRecebido - valePedagio - tarifas;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Restante a Receber:', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                Text(
-                  'R\$ ${restantePendente.toStringAsFixed(2)}',
+                const Text(
+                  'Fechamento de Saldo',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: restantePendente > 0 ? Colors.orange : Colors.green,
+                    color: Colors.indigo,
                   ),
                 ),
+                const Divider(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Frete Total:', style: TextStyle(fontSize: 15)),
+                    Text(
+                      'R\$ ${freteTotal.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('(-) Adiantamento:', style: TextStyle(fontSize: 15)),
+                    Text(
+                      'R\$ ${adiantamento.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 15, color: Colors.red),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('(-) Saldo Recebido:', style: TextStyle(fontSize: 15)),
+                    Text(
+                      'R\$ ${saldoRecebido.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 15, color: Colors.blue),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('(-) Vale Pedágio:', style: TextStyle(fontSize: 15)),
+                    Text(
+                      'R\$ ${valePedagio.toStringAsFixed(2)}',
+                      style: TextStyle(fontSize: 15, color: Colors.amber.shade800),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('(-) Tarifas:', style: TextStyle(fontSize: 15)),
+                    Text(
+                      'R\$ ${tarifas.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 15, color: Colors.purple),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Restante a Receber:',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'R\$ ${restantePendenteCalculado.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: restantePendenteCalculado > 0
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     ),
