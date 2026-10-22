@@ -456,7 +456,6 @@ class _TelaRelatorioLucroState extends State<TelaRelatorioLucro> {
   List<Map<String, dynamic>> manutencoes = [];
   List<Map<String, dynamic>> combustivel = [];
 
-  // Função auxiliar para calcular o custo de pneus com base na taxa de R$ 0,477/km
   double calcularCustoPneusMes({
     required double kmRodados,
     double custoPorKmPneu = 0.477,
@@ -591,24 +590,25 @@ class _TelaRelatorioLucroState extends State<TelaRelatorioLucro> {
     final totalDespesas = manut + comb + custoPneus;
     final lucro = frete - totalDespesas;
     final custoPorKm = kmRodados > 0 ? totalDespesas / kmRodados : 0.0;
-Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => TelaFaturaImpressao(
-      modelo: modelo,
-      placa: placa,
-      mes: mes,
-      frete: frete,
-      manutencao: manut,
-      combustivel: comb,
-      custoPneus: custoPneus, // <--- Certifique-se de passar esta variável aqui também!
-      kmRodados: kmRodados,
-      custoPorKm: custoPorKm,
-      lucro: lucro,
-    ),
-  ),
-);
 
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TelaFaturaImpressao(
+          modelo: modelo,
+          placa: placa,
+          mes: mes,
+          frete: frete,
+          manutencao: manut,
+          combustivel: comb,
+          custoPneus: custoPneus,
+          kmRodados: kmRodados,
+          custoPorKm: custoPorKm,
+          lucro: lucro,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -638,11 +638,8 @@ Navigator.push(
                     final manut = _calcularManutencaoMes(mes);
                     final comb = _calcularCombustivelMes(mes);
                     final kmRodados = _calcularKMRodadosMes(mes);
-                    
-                    // Cálculo do custo de pneus baseado na quilometragem do mês
                     final custoPneus = calcularCustoPneusMes(kmRodados: kmRodados);
 
-                    // Despesas totais agora incluem Manutenção + Combustível + Pneus
                     final totalDespesas = manut + comb + custoPneus;
                     final lucro = frete - totalDespesas;
                     final custoPorKm = kmRodados > 0 ? totalDespesas / kmRodados : 0.0;
@@ -781,7 +778,7 @@ class TelaFaturaImpressao extends StatelessWidget {
   final double frete;
   final double manutencao;
   final double combustivel;
-  final double custoPneus; // <--- Adicionado aqui
+  final double custoPneus;
   final double kmRodados;
   final double custoPorKm;
   final double lucro;
@@ -794,7 +791,7 @@ class TelaFaturaImpressao extends StatelessWidget {
     required this.frete,
     required this.manutencao,
     required this.combustivel,
-    required this.custoPneus, // <--- Obrigatório no construtor
+    required this.custoPneus,
     required this.kmRodados,
     required this.custoPorKm,
     required this.lucro,
@@ -901,7 +898,6 @@ class TelaFaturaImpressao extends StatelessWidget {
                       Padding(padding: const EdgeInsets.all(10.0), child: Text('R\$ ${combustivel.toStringAsFixed(2)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
                     ],
                   ),
-                  // Nova linha adicionada para os Pneus na Fatura
                   TableRow(
                     children: [
                       const Padding(padding: EdgeInsets.all(10.0), child: Text('(-) Custo de Pneus (R\$ 0,477/km)')),
