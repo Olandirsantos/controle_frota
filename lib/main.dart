@@ -825,8 +825,8 @@ class TelaFaturaImpressao extends StatelessWidget {
       ),
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 520), // Ajustado para caber na folha A4
-          padding: const EdgeInsets.all(20.0), // Padding otimizado para impressão
+          constraints: const BoxConstraints(maxWidth: 420), // Otimizado para caber em Retrato A4
+          padding: const EdgeInsets.all(12.0),
           color: Colors.white,
           child: ListView(
             children: [
@@ -835,37 +835,37 @@ class TelaFaturaImpressao extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black87,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                icon: const Icon(Icons.print),
-                label: const Text('IMPRIMIR OU SALVAR COMO PDF (Ctrl + P)'),
+                icon: const Icon(Icons.print, size: 18),
+                label: const Text('IMPRIMIR OU SALVAR COMO PDF'),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               const Text(
                 'RELATÓRIO FINANCEIRO DE FROTA',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
                 'Fechamento Mensal - Referência: $mes',
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
-              const Divider(height: 30, thickness: 2),
+              const Divider(height: 20, thickness: 2),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Veículo: $modelo', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                  Text('Placa: $placa', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text('Veículo: $modelo', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  Text('Placa: $placa', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               const Text(
                 'DEMONSTRATIVO DE RECEITAS E DESPESAS',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blueGrey),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Table(
                 border: TableBorder.all(color: Colors.grey.shade300),
                 columnWidths: const {
@@ -876,86 +876,86 @@ class TelaFaturaImpressao extends StatelessWidget {
                   TableRow(
                     decoration: BoxDecoration(color: Colors.grey.shade100),
                     children: const [
-                      Padding(padding: EdgeInsets.all(8.0), child: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                      Padding(padding: EdgeInsets.all(8.0), child: Text('Valor (R\$)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                      Padding(padding: EdgeInsets.all(6.0), child: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                      Padding(padding: EdgeInsets.all(6.0), child: Text('Valor (R\$)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
-                      const Padding(padding: EdgeInsets.all(8.0), child: Text('(+) Receita Total de Fretes', style: TextStyle(fontSize: 13))),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('R\$ ${frete.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13))),
+                      const Padding(padding: EdgeInsets.all(6.0), child: Text('(+) Receita Total de Fretes', style: TextStyle(fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${frete.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
-                      const Padding(padding: EdgeInsets.all(8.0), child: Text('(-) Custo de Manutenções', style: TextStyle(fontSize: 13))),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('R\$ ${manutencao.toStringAsFixed(2)}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13))),
+                      const Padding(padding: EdgeInsets.all(6.0), child: Text('(-) Custo de Manutenções', style: TextStyle(fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${manutencao.toStringAsFixed(2)}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
-                      const Padding(padding: EdgeInsets.all(8.0), child: Text('(-) Gasto com Combustível / Arla', style: TextStyle(fontSize: 13))),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('R\$ ${combustivel.toStringAsFixed(2)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13))),
+                      const Padding(padding: EdgeInsets.all(6.0), child: Text('(-) Combustível / Arla', style: TextStyle(fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${combustivel.toStringAsFixed(2)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
-                      const Padding(padding: EdgeInsets.all(8.0), child: Text('(-) Custo de Pneus', style: TextStyle(fontSize: 13))),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('R\$ ${custoPneus.toStringAsFixed(2)}', style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: 13))),
+                      const Padding(padding: EdgeInsets.all(6.0), child: Text('(-) Custo de Pneus', style: TextStyle(fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${custoPneus.toStringAsFixed(2)}', style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
-                      const Padding(padding: EdgeInsets.all(8.0), child: Text('KM Rodados no Mês', style: TextStyle(fontSize: 13))),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('${kmRodados.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 13))),
+                      const Padding(padding: EdgeInsets.all(6.0), child: Text('KM Rodados no Mês', style: TextStyle(fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('${kmRodados.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
-                      const Padding(padding: EdgeInsets.all(8.0), child: Text('Custo Operacional por KM', style: TextStyle(fontSize: 13))),
-                      Padding(padding: const EdgeInsets.all(8.0), child: Text('R\$ ${custoPorKm.toStringAsFixed(2)}/km', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                      const Padding(padding: EdgeInsets.all(6.0), child: Text('Custo Operacional/KM', style: TextStyle(fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${custoPorKm.toStringAsFixed(2)}/km', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: lucro >= 0 ? Colors.green.shade50 : Colors.red.shade50,
-                  border: Border.all(color: lucro >= 0 ? Colors.green : Colors.red, width: 2),
-                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: lucro >= 0 ? Colors.green : Colors.red, width: 1.5),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       lucro >= 0 ? 'LUCRO LÍQUIDO DO MÊS:' : 'PREJUÍZO DO MÊS:',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: lucro >= 0 ? Colors.green.shade800 : Colors.red.shade800),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: lucro >= 0 ? Colors.green.shade800 : Colors.red.shade800),
                     ),
                     Text(
                       'R\$ ${lucro.toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: lucro >= 0 ? Colors.green.shade800 : Colors.red.shade800),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: lucro >= 0 ? Colors.green.shade800 : Colors.red.shade800),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 35),
+              const SizedBox(height: 25),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     children: [
-                      Text('___________________________', style: TextStyle(color: Colors.grey)),
-                      SizedBox(height: 4),
-                      Text('Assinatura do Responsável', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text('________________________', style: TextStyle(color: Colors.grey)),
+                      SizedBox(height: 2),
+                      Text('Assinatura do Responsável', style: TextStyle(fontSize: 10, color: Colors.grey)),
                     ],
                   ),
                   Column(
                     children: [
-                      Text('___________________________', style: TextStyle(color: Colors.grey)),
-                      SizedBox(height: 4),
-                      Text('Visto da Contabilidade', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text('________________________', style: TextStyle(color: Colors.grey)),
+                      SizedBox(height: 2),
+                      Text('Visto da Contabilidade', style: TextStyle(fontSize: 10, color: Colors.grey)),
                     ],
                   ),
                 ],
