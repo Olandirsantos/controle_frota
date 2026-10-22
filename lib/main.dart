@@ -825,22 +825,12 @@ class TelaFaturaImpressao extends StatelessWidget {
       ),
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 420), // Otimizado para caber em Retrato A4
-          padding: const EdgeInsets.all(12.0),
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.all(16.0),
           color: Colors.white,
           child: ListView(
             children: [
-              ElevatedButton.icon(
-                onPressed: () => _executarImpressao(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                icon: const Icon(Icons.print, size: 18),
-                label: const Text('IMPRIMIR OU SALVAR COMO PDF'),
-              ),
-              const SizedBox(height: 12),
+              // Botão grande removido para a impressão começar limpa direto no relatório
               const Text(
                 'RELATÓRIO FINANCEIRO DE FROTA',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.0),
@@ -877,31 +867,31 @@ class TelaFaturaImpressao extends StatelessWidget {
                     decoration: BoxDecoration(color: Colors.grey.shade100),
                     children: const [
                       Padding(padding: EdgeInsets.all(6.0), child: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                      Padding(padding: EdgeInsets.all(6.0), child: Text('Valor (R\$)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                      Padding(padding: EdgeInsets.all(6.0), child: Text('Valor (R$)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
                       const Padding(padding: EdgeInsets.all(6.0), child: Text('(+) Receita Total de Fretes', style: TextStyle(fontSize: 11))),
-                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${frete.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R$ ${frete.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
                       const Padding(padding: EdgeInsets.all(6.0), child: Text('(-) Custo de Manutenções', style: TextStyle(fontSize: 11))),
-                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${manutencao.toStringAsFixed(2)}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R$ ${manutencao.toStringAsFixed(2)}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
                       const Padding(padding: EdgeInsets.all(6.0), child: Text('(-) Combustível / Arla', style: TextStyle(fontSize: 11))),
-                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${combustivel.toStringAsFixed(2)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R$ ${combustivel.toStringAsFixed(2)}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
                     children: [
                       const Padding(padding: EdgeInsets.all(6.0), child: Text('(-) Custo de Pneus', style: TextStyle(fontSize: 11))),
-                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${custoPneus.toStringAsFixed(2)}', style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R$ ${custoPneus.toStringAsFixed(2)}', style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                   TableRow(
@@ -913,7 +903,7 @@ class TelaFaturaImpressao extends StatelessWidget {
                   TableRow(
                     children: [
                       const Padding(padding: EdgeInsets.all(6.0), child: Text('Custo Operacional/KM', style: TextStyle(fontSize: 11))),
-                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R\$ ${custoPorKm.toStringAsFixed(2)}/km', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                      Padding(padding: const EdgeInsets.all(6.0), child: Text('R$ ${custoPorKm.toStringAsFixed(2)}/km', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
                     ],
                   ),
                 ],
@@ -934,7 +924,7 @@ class TelaFaturaImpressao extends StatelessWidget {
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: lucro >= 0 ? Colors.green.shade800 : Colors.red.shade800),
                     ),
                     Text(
-                      'R\$ ${lucro.toStringAsFixed(2)}',
+                      'R$ ${lucro.toStringAsFixed(2)}',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: lucro >= 0 ? Colors.green.shade800 : Colors.red.shade800),
                     ),
                   ],
