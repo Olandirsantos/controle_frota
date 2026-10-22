@@ -900,7 +900,7 @@ class TelaFaturaImpressao extends StatelessWidget {
                   ),
                   TableRow(
                     children: [
-                      const Padding(padding: EdgeInsets.all(10.0), child: Text('(-) Custo de Pneus (R\$ 0,477/km)')),
+                      const Padding(padding: EdgeInsets.all(10.0), child: Text('(-) Custo de Pneus')),
                       Padding(padding: const EdgeInsets.all(10.0), child: Text('R\$ ${custoPneus.toStringAsFixed(2)}', style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold))),
                     ],
                   ),
