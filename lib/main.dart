@@ -1497,9 +1497,6 @@ class _TelaCadastroCombustivelState extends State<TelaCadastroCombustivel> {
   }
 }
 
-// ----------------------------------------------------
-// TELA DE LISTA DE VIAGENS (OTIMIZADA PARA TELEMÓVEL)
-// ----------------------------------------------------
 class TelaListaViagens extends StatefulWidget {
   final Map<String, dynamic> veiculo;
 
@@ -1576,10 +1573,6 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
     } catch (_) {}
     return 'Outros';
   }
-
-  // Se o resto do método build e os componentes visuais da sua tela já existiam abaixo, 
-  // certifique-se de mantê-los logo após estas funções.
-}
 
   List<String> get _listaMeses {
     final Set<String> meses = {'Todos'};
@@ -1728,7 +1721,6 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Linha Superior: Origem ➔ Destino e Status
                                       Row(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
@@ -1758,7 +1750,6 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                         ],
                                       ),
                                       const Divider(height: 16),
-                                      // Linha do Meio: Detalhes da Viagem
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
@@ -1779,7 +1770,6 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
                                         ],
                                       ),
                                       const SizedBox(height: 12),
-                                      // Linha Inferior: Valor do Frete e Botão de Editar
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
