@@ -1500,15 +1500,6 @@ class _TelaCadastroCombustivelState extends State<TelaCadastroCombustivel> {
 // ----------------------------------------------------
 // TELA DE LISTA DE VIAGENS (OTIMIZADA PARA TELEMÓVEL)
 // ----------------------------------------------------
-class TelaListaViagens extends StatefulWidget {
-  final Map<String, dynamic> veiculo;
-
-  const TelaListaViagens({super.key, required this.veiculo});
-
-  @override
-  State<TelaListaViagens> createState() => _TelaListaViagensState();
-}
-
 class _TelaListaViagensState extends State<TelaListaViagens> {
   List<Map<String, dynamic>> viagens = [];
   bool _carregando = true;
@@ -1520,17 +1511,46 @@ class _TelaListaViagensState extends State<TelaListaViagens> {
     _carregarViagens();
   }
 
+  // 1. Adicione a função auxiliar _parseData aqui dentro da classe
+  DateTime _parseData(String? dataStr) {
+    if (dataStr == null || dataStr.isEmpty) return DateTime(1900);
+    
+    // Tenta ler formato padrão da base de dados (yyyy-MM-dd)
+    final parsedIso = DateTime.tryParse(dataStr);
+    if (parsedIso != null) return parsedIso;
+
+    // Tenta ler formato brasileiro (dd/MM/yyyy)
+    try {
+      final partes = dataStr.split('/');
+      if (partes.length == 3) {
+        final dia = int.parse(partes[0]);
+        final mes = int.parse(partes[1]);
+        final ano = int.parse(partes[2]);
+        return DateTime(ano, mes, dia);
+      }
+    } catch (_) {}
+
+    return DateTime(1900);
+  }
+
+  // 2. Atualize a função _carregarViagens para ordenar por data real
   Future<void> _carregarViagens() async {
     try {
       final veiculoId = widget.veiculo['id'];
+      
+      // Buscamos os dados sem o .order('id') do banco para ordenar pela data correta
       final resposta = await supabase
           .from('viagens')
           .select()
-          .eq('veiculo_id', veiculoId)
-          .order('id', ascending: false);
+          .eq('veiculo_id', veiculoId);
+
+      List<Map<String, dynamic>> tempViagens = List<Map<String, dynamic>>.from(resposta);
+
+      // Ordena por data (Mais recente primeiro: Outubro acima de Junho)
+      tempViagens.sort((a, b) => _parseData(b['data']?.toString()).compareTo(_parseData(a['data']?.toString())));
 
       setState(() {
-        viagens = List<Map<String, dynamic>>.from(resposta);
+        viagens = tempViagens;
         _carregando = false;
       });
     } catch (e) {
