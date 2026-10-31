@@ -589,7 +589,7 @@ class _TelaRelatorioLucroState extends State<TelaRelatorioLucro> {
     return total;
   }
 
-  // CÁLCULO DE KM BASEADO NOS ABASTECIMENTOS (Diferença mensal: Último odômetro - Primeiro odômetro)
+// CÁLCULO DE KM ROBUSTO BASEADO NOS ABASTECIMENTOS DO MÊS
   double _calcularKMRodadosMes(String mesAno) {
     final combsMes = combustivel.where((c) {
       return _extrairMesAno(c['data']?.toString()) == mesAno;
@@ -597,13 +597,32 @@ class _TelaRelatorioLucroState extends State<TelaRelatorioLucro> {
 
     if (combsMes.isEmpty) return 0.0;
 
-    combsMes.sort((a, b) => _parseData(a['data']?.toString()).compareTo(_parseData(b['data']?.toString())));
+    // Extrai todos os valores de KM/odômetro válidos do mês
+    List<double> kilometros = [];
+    for (var c in combsMes) {
+      // Tenta ler de várias chaves possíveis ('km', 'odometro', etc.)
+      final kmVal = double.tryParse(
+        c['km']?.toString() ?? 
+        c['odometro']?.toString() ?? 
+        c['quilometragem']?.toString() ?? '0'
+      ) ?? 0.0;
+      
+      if (kmVal > 0) {
+        kilometros.add(kmVal);
+      }
+    }
 
-    final primeiroKm = double.tryParse(combsMes.first['km']?.toString() ?? combsMes.first['odometro']?.toString() ?? '0') ?? 0.0;
-    final ultimoKm = double.tryParse(combsMes.last['km']?.toString() ?? combsMes.last['odometro']?.toString() ?? '0') ?? 0.0;
+    if (kilometros.isEmpty) return 0.0;
 
-    if (ultimoKm >= primeiroKm) {
-      return ultimoKm - primeiroKm;
+    // Ordena os quilómetros do menor para o maior
+    kilometros.sort();
+
+    // A distância rodada no mês é o maior odômetro menos o menor odômetro registado no período
+    final menorKm = kilometros.first;
+    final maiorKm = kilometros.last;
+
+    if (maiorKm >= menorKm) {
+      return maiorKm - menorKm;
     }
 
     return 0.0;
