@@ -451,10 +451,10 @@ class TelaRelatorioLucro extends StatefulWidget {
 }
 
 class _TelaRelatorioLucroState extends State<TelaRelatorioLucro> {
-  bool _carregando = true;
-  List<Map<String, dynamic>> viagens = [];
-  List<Map<String, dynamic>> manutencoes = [];
-  List<Map<String, dynamic>> combustivel = [];
+  var _carregando = true;
+  var viagens = [];
+  var manutencoes = [];
+  var combustivel = [];
 
   double calcularCustoPneusMes({
     required double kmRodados,
@@ -470,52 +470,52 @@ class _TelaRelatorioLucroState extends State<TelaRelatorioLucro> {
   }
 
   // Função auxiliar para converter "dd/MM/yyyy" em DateTime para comparação correta
-DateTime _parseData(String? dataStr) {
-  if (dataStr == null || dataStr.isEmpty) return DateTime(1900);
-  try {
-    final partes = dataStr.split('/');
-    if (partes.length == 3) {
-      final dia = int.parse(partes[0]);
-      final mes = int.parse(partes[1]);
-      final ano = int.parse(partes[2]);
-      return DateTime(ano, mes, dia);
-    }
-  } catch (_) {}
-  return DateTime(1900);
-}
+  DateTime _parseData(String? dataStr) {
+    if (dataStr == null || dataStr.isEmpty) return DateTime(1900);
+    try {
+      final partes = dataStr.split('/');
+      if (partes.length == 3) {
+        final dia = int.parse(partes[0]);
+        final mes = int.parse(partes[1]);
+        final ano = int.parse(partes[2]);
+        return DateTime(ano, mes, dia);
+      }
+    } catch (_) {}
+    return DateTime(1900);
+  }
 
-Future<void> _carregarDadosFinanceiros() async {
-  try {
-    final veiculoId = widget.veiculo['id'];
-    
-    final resViagens = await supabase.from('viagens').select().eq('veiculo_id', veiculoId);
-    final resManut = await supabase.from('manutencoes').select().eq('veiculo_id', veiculoId);
-    final resComb = await supabase.from('combustivel').select().eq('veiculo_id', veiculoId);
+  Future<void> _carregarDadosFinanceiros() async {
+    try {
+      final veiculoId = widget.veiculo['id'];
+      
+      final resViagens = await supabase.from('viagens').select().eq('veiculo_id', veiculoId);
+      final resManut = await supabase.from('manutencoes').select().eq('veiculo_id', veiculoId);
+      final resComb = await supabase.from('combustivel').select().eq('veiculo_id', veiculoId);
 
-    List<Map<String, dynamic>> tempViagens = List<Map<String, dynamic>>.from(resViagens);
-    List<Map<String, dynamic>> tempManut = List<Map<String, dynamic>>.from(resManut);
-    List<Map<String, dynamic>> tempComb = List<Map<String, dynamic>>.from(resComb);
+      var tempViagens = (resViagens as List).map((e) => Map<String, dynamic>.from(e)).toList();
+      var tempManut = (resManut as List).map((e) => Map<String, dynamic>.from(e)).toList();
+      var tempComb = (resComb as List).map((e) => Map<String, dynamic>.from(e)).toList();
 
-    // ORDENAÇÃO POR DATA (Do mais recente para o mais antigo: Outubro fica acima de Junho)
-    tempViagens.sort((a, b) => _parseData(b['data']?.toString()).compareTo(_parseData(a['data']?.toString())));
-    tempManut.sort((a, b) => _parseData(b['data']?.toString()).compareTo(_parseData(a['data']?.toString())));
-    tempComb.sort((a, b) => _parseData(b['data']?.toString()).compareTo(_parseData(a['data']?.toString())));
+      // ORDENAÇÃO POR DATA (Do mais recente para o mais antigo)
+      tempViagens.sort((a, b) => _parseData(b['data']?.toString()).compareTo(_parseData(a['data']?.toString())));
+      tempManut.sort((a, b) => _parseData(b['data']?.toString()).compareTo(_parseData(a['data']?.toString())));
+      tempComb.sort((a, b) => _parseData(b['data']?.toString()).compareTo(_parseData(a['data']?.toString())));
 
-    setState(() {
-      viagens = tempViagens;
-      manutencoes = tempManut;
-      combustivel = tempComb;
-      _carregando = false;
-    });
-  } catch (e) {
-    setState(() => _carregando = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados financeiros: $e')),
-      );
+      setState(() {
+        viagens = tempViagens;
+        manutencoes = tempManut;
+        combustivel = tempComb;
+        _carregando = false;
+      });
+    } catch (e) {
+      setState(() => _carregando = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar dados financeiros: $e')),
+        );
+      }
     }
   }
-}
 
   String _extrairMesAno(String? dataStr) {
     if (dataStr == null || dataStr.isEmpty) return 'Outros';
@@ -589,18 +589,24 @@ Future<void> _carregarDadosFinanceiros() async {
     return total;
   }
 
+  // CÁLCULO DE KM BASEADO NOS ABASTECIMENTOS (Diferença mensal: Último odômetro - Primeiro odômetro)
   double _calcularKMRodadosMes(String mesAno) {
-    double totalKm = 0.0;
-    for (var v in viagens) {
-      if (_extrairMesAno(v['data']?.toString()) == mesAno) {
-        final kmInicial = double.tryParse(v['km_inicial']?.toString() ?? '0') ?? 0.0;
-        final kmFinal = double.tryParse(v['km_final']?.toString() ?? '0') ?? 0.0;
-        if (kmFinal >= kmInicial) {
-          totalKm += (kmFinal - kmInicial);
-        }
-      }
+    final combsMes = combustivel.where((c) {
+      return _extrairMesAno(c['data']?.toString()) == mesAno;
+    }).toList();
+
+    if (combsMes.isEmpty) return 0.0;
+
+    combsMes.sort((a, b) => _parseData(a['data']?.toString()).compareTo(_parseData(b['data']?.toString())));
+
+    final primeiroKm = double.tryParse(combsMes.first['km']?.toString() ?? combsMes.first['odometro']?.toString() ?? '0') ?? 0.0;
+    final ultimoKm = double.tryParse(combsMes.last['km']?.toString() ?? combsMes.last['odometro']?.toString() ?? '0') ?? 0.0;
+
+    if (ultimoKm >= primeiroKm) {
+      return ultimoKm - primeiroKm;
     }
-    return totalKm;
+
+    return 0.0;
   }
 
   void _mostrarFaturaMensal(BuildContext context, String mes) {

@@ -1,0 +1,50 @@
+[33m83c372c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Adiciona script build.sh para instalar o Flutter na Vercel
+[33mc8331e1[m Remove vercel.json invalido e usa configuracao do painel
+[33m781990b[m Atualiza configuracao do vercel.json
+[33mfa87bd8[m Corrige pubspec e adiciona vercel.json correto
+[33m30bf4bb[m Corrige sintaxe e atualiza distância rodada pelos abastecimentos
+[33m201b30e[m Atualiza cálculo da distância rodada para basear nos abastecimentos
+[33m28b59fc[m Atualiza TelaListaViagens com ordenação correta por data
+[33me549bd6[m Restaura TelaListaViagens e aplica ordenação cronológica
+[33mdaeb04f[m Ordena viagens cronologicamente por data
+[33mcb0e967[m Ordena lançamentos financeiros por data
+[33m41c36b4[m Corrige escape de strings do demonstrativo financeiro
+[33m2d805c0[m Remove botao do corpo e limpa layout de impressao
+[33m843e6ae[m Otimiza largura da fatura para impressao A4 retrato
+[33m236bd49[m Ajusta largura da fatura para impressao A4
+[33m07cfb5c[m Ajusta layout de impressao e custo de pneus
+[33md0273f5[m Corrige estrutura de classes e adiciona custo de pneus
+[33mfd642ff[m Adiciona custo de pneus de R$ 0,477/km no relatorio e fatura
+[33m4f77f77[m Corrige calculo de Restante a Receber no Fechamento de Saldo
+[33m9a4ed49[m Corrige consultas seguras com select geral para evitar erros de colunas em falta
+[33m7aaae2f[m Corrige consultas seguras por tabela sem depender de colunas de data rigidas
+[33m67fa832[m Torna o filtro de data flexivel para custos de combustivel sem data
+[33m762cdae[m Adiciona filtro mensal no dashboard financeiro
+[33m1fd5df6[m Remove codigo invalido do card indicador
+[33m0852cf0[m Adiciona metodo em falta e corrige combustivel no dashboard
+[33mf772c6b[m Usa tabela correta 'combustivel' no dashboard
+[33mf90560b[m Corrige tipagem de objeto no filtro do dashboard
+[33m3147fd7[m Corrige instancia do supabase para minuscula no dashboard
+[33mcee4999[m Adiciona filtro por veiculo e corrige calculo de combustivel no Dashboard
+[33mad1d0d5[m Corrige chave duplicada no pubspec.yaml
+[33mf1ae5fe[m Corrige posicao do import do fl_chart e adiciona o dashboard financeiro
+[33mbabb84d[m Adiciona atalho para o Dashboard financeiro na TelaPrincipal
+[33m0e830cb[m Adiciona dependência fl_chart e cria o Dashboard financeiro da frota
+[33m1018cdb[m Melhora o layout do cartao de viagens para visualizacao fluida em telemoveis
+[33m01dd3a4[m Adiciona modulo completo de controle de pneus por veiculo
+[33ma6eab08[m Adiciona barra de pesquisa por texto e filtro mensal na tela de manutencoes
+[33ma2b0cb6[m Atualiza detalhes do veiculo para abrir a listagem de manutencoes com filtro mensal
+[33mbfc210a[m Adiciona filtro por mes e somatorio na tela de manutencoes
+[33m096babc[m Adiciona tela de listagem de manutenções com filtro mensal e somatório
+[33m6a2fa87[m Ajusta calculo do saldo restante descontando pedagio e tarifas com indicador quitado/pendente
+[33mc70e491[m corrige erros de construcao
+[33md39ef04[m Adiciona abas de Vale Pedagio e Tarifas com campos de valor e data
+[33m385f9e8[m Adiciona campos de adiantamento e saldo com datas nas viagens
+[33mfc64c25[m Adiciona gestao real de adiantamentos e calculo de saldo dinamico
+[33mf4ae308[m Adiciona abas financeiras e campos de produto e transportadora nas viagens
+[33m01a0d72[m adiciona campos de produto e transportadora
+[33mb065e32[m Atualiza tela de cadastro de veiculo corrigida
+[33mb7a54e8[m Corrige estrutura da classe de cadastro de veiculos
+[33ma6dc664[m Volta para a versao estavel de ontem
+[33m0c28085[m Ajuste vercel.json tamanho buildCommand
+[33m7fa6a94[m Primeiro commit - Projeto Controle de Frota com Supabase
